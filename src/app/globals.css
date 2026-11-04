@@ -1,0 +1,99 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    /* Default Brand Color #44C5ED (Cyan) with Dark Text #0F172A */
+    --primary: 194 83% 60%;
+    --primary-foreground: 222 47% 11%;
+
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 204 94% 94%;
+    --accent-foreground: 222 47% 11%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 194 83% 60%;
+
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Tema da loja pública: claro por padrão, escuro conforme o aparelho.
+   Valores como "R G B" para suportar opacidade do Tailwind. Contraste >= 4.5:1.
+   --------------------------------------------------------------------------- */
+.store-root {
+  --st-bg: 241 245 249;
+  --st-surface: 255 255 255;
+  --st-surface2: 241 245 249;
+  --st-border: 203 213 225;
+  --st-text: 15 23 42;
+  --st-muted: 71 85 105;
+  --st-accent: 3 105 161;
+  --st-accent-fg: 255 255 255;
+  --st-ok: 21 128 61;
+  --st-warn: 161 98 7;
+  --st-danger: 185 28 28;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  .store-root {
+    --st-bg: 11 18 32;
+    --st-surface: 17 24 39;
+    --st-surface2: 30 41 59;
+    --st-border: 51 65 85;
+    --st-text: 241 245 249;
+    --st-muted: 148 163 184;
+    --st-accent: 56 189 248;
+    --st-accent-fg: 8 24 40;
+    --st-ok: 74 222 128;
+    --st-warn: 251 191 36;
+    --st-danger: 248 113 113;
+    color-scheme: dark;
+  }
+}
+
+@keyframes st-bump {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+@keyframes st-toast-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.st-bump { animation: st-bump 0.4s ease-out; }
+.st-toast { animation: st-toast-in 0.2s ease-out; }
+
+@media (prefers-reduced-motion: reduce) {
+  .st-bump, .st-toast { animation: none; }
+}
