@@ -21,11 +21,11 @@ export default async function OrdersPage() {
   const orders = db?.orders ?? [];
 
   const badgeClass: Record<string, string> = {
-    orcamento: "bg-amber-500/15 text-amber-700",
-    pendente: "bg-sky-500/15 text-sky-700",
-    aprovado: "bg-indigo-500/15 text-indigo-700",
-    faturado: "bg-emerald-500/15 text-emerald-700",
-    cancelado: "bg-red-500/15 text-red-700",
+    aprovado: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30",
+    faturado: "bg-sky-500/15 text-sky-700 dark:text-sky-400 border border-sky-500/30",
+    pendente: "bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30",
+    orcamento: "bg-purple-500/15 text-purple-700 dark:text-purple-400 border border-purple-500/30",
+    cancelado: "bg-red-500/15 text-red-700 dark:text-red-400 border border-red-500/30",
   };
 
   return (

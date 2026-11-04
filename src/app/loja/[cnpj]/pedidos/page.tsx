@@ -24,12 +24,40 @@ export default async function CustomerOrdersPage({
   const cart = await getCartDetail(route);
   const orders = session ? await getCustomerOrders(route, session.cid) : [];
 
-  const statusLabels: Record<string, string> = {
-    orcamento: "Orçamento em cotação",
-    pendente: "Aguardando aprovação",
-    aprovado: "Aprovado",
-    faturado: "Faturado",
-    cancelado: "Cancelado",
+  const statusConfig: Record<
+    string,
+    { label: string; badgeClass: string; dotClass: string }
+  > = {
+    aprovado: {
+      label: "Aprovado",
+      badgeClass: "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30",
+      dotClass: "bg-emerald-400",
+    },
+    faturado: {
+      label: "Faturado",
+      badgeClass: "bg-sky-500/15 text-sky-400 border border-sky-500/30",
+      dotClass: "bg-sky-400",
+    },
+    pendente: {
+      label: "Aguardando aprovação",
+      badgeClass: "bg-amber-500/15 text-amber-400 border border-amber-500/30",
+      dotClass: "bg-amber-400",
+    },
+    orcamento: {
+      label: "Orçamento em cotação",
+      badgeClass: "bg-purple-500/15 text-purple-400 border border-purple-500/30",
+      dotClass: "bg-purple-400",
+    },
+    cancelado: {
+      label: "Cancelado",
+      badgeClass: "bg-rose-500/15 text-rose-400 border border-rose-500/30",
+      dotClass: "bg-rose-400",
+    },
+    entregue: {
+      label: "Entregue",
+      badgeClass: "bg-teal-500/15 text-teal-400 border border-teal-500/30",
+      dotClass: "bg-teal-400",
+    },
   };
 
   return (
@@ -78,9 +106,22 @@ export default async function CustomerOrdersPage({
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-base font-extrabold">{ord.code}</span>
-                      <span className="rounded-full bg-store-surface2 px-2.5 py-0.5 text-xs font-bold text-store-accent">
-                        {statusLabels[ord.status] ?? ord.status}
-                      </span>
+                      {(() => {
+                        const st = statusConfig[ord.status] ?? {
+                          label: ord.status,
+                          badgeClass:
+                            "bg-slate-500/15 text-slate-300 border border-slate-500/30",
+                          dotClass: "bg-slate-400",
+                        };
+                        return (
+                          <span
+                            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-bold ${st.badgeClass}`}
+                          >
+                            <span className={`h-1.5 w-1.5 rounded-full ${st.dotClass}`} />
+                            {st.label}
+                          </span>
+                        );
+                      })()}
                     </div>
                     <p className="mt-1 text-xs text-store-muted">
                       Pagamento: <b>{ord.paymentMethodName}</b> ·{" "}

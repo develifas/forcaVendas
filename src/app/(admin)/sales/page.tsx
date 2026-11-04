@@ -46,6 +46,14 @@ export default async function SalesPage({
   const avgTicket =
     allOrders.length > 0 ? Math.round(totalRevenue / allOrders.length) : 0;
 
+  const saleBadgeClass: Record<string, string> = {
+    aprovado: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30",
+    faturado: "bg-sky-500/15 text-sky-700 dark:text-sky-400 border border-sky-500/30",
+    pendente: "bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30",
+    orcamento: "bg-purple-500/15 text-purple-700 dark:text-purple-400 border border-purple-500/30",
+    cancelado: "bg-red-500/15 text-red-700 dark:text-red-400 border border-red-500/30",
+  };
+
   return (
     <div className="space-y-6">
       {/* Barra de caminho: Início | Administrar | Vendas (Fiel ao Print 9) */}
@@ -166,7 +174,13 @@ export default async function SalesPage({
                           {formatBRL(s.totalCents)}
                         </td>
                         <td className="rounded border border-slate-300 px-3 py-2.5 text-center font-semibold dark:border-border">
-                          {s.status}
+                          <span
+                            className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-bold uppercase ${
+                              saleBadgeClass[s.status] ?? "bg-slate-200"
+                            }`}
+                          >
+                            {s.status}
+                          </span>
                         </td>
                         <td className="rounded border border-slate-300 px-2 py-2 text-center dark:border-border">
                           <div className="inline-flex items-center justify-center gap-1.5">
