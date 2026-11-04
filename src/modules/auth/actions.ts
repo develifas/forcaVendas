@@ -88,7 +88,7 @@ export async function loginAction(
       maxAge: 60 * 60 * 24 * 30,
     });
 
-    if (destination === "s2000") {
+    if (destination === "s2000" || destination === "admin") {
       redirect("/");
     }
     if (defaultRoute) {
@@ -182,7 +182,7 @@ export async function loginAction(
       sellerUsername: staff.username || staff.email,
     });
 
-    if (destination === "s2000") {
+    if (destination === "s2000" || destination === "admin") {
       redirect("/");
     }
     redirect(`/loja/${route.cnpj}`);

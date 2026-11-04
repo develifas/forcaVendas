@@ -1437,12 +1437,18 @@ function createInitialSeed(): PlatformDataFile {
   };
 }
 
+let inMemoryPlatformData: PlatformDataFile | null = null;
+
 export function readPlatformData(): PlatformDataFile {
+  if (inMemoryPlatformData) {
+    return inMemoryPlatformData;
+  }
   try {
     if (fs.existsSync(DATA_FILE)) {
       const raw = fs.readFileSync(DATA_FILE, "utf8");
       const parsed = JSON.parse(raw) as PlatformDataFile;
       if (parsed && parsed.version === 5 && Array.isArray(parsed.routes) && parsed.databases) {
+        inMemoryPlatformData = parsed;
         return parsed;
       }
     }
@@ -1450,11 +1456,13 @@ export function readPlatformData(): PlatformDataFile {
     // Recria se corrompido ou versão anterior
   }
   const seed = createInitialSeed();
+  inMemoryPlatformData = seed;
   writePlatformData(seed);
   return seed;
 }
 
 export function writePlatformData(data: PlatformDataFile): void {
+  inMemoryPlatformData = data;
   try {
     fs.mkdirSync(DATA_DIR, { recursive: true });
     fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), "utf8");

@@ -16,10 +16,12 @@ export function verifyPassword(password: string, stored: string): boolean {
 }
 
 function secret(name: string, devFallback: string): string {
-  const v = process.env[name];
-  if (v) return v;
-  if (process.env.NODE_ENV === "production") throw new Error(`Variável ${name} obrigatória em produção.`);
-  return devFallback;
+  return (
+    process.env[name] ||
+    process.env.NEXTAUTH_SECRET ||
+    process.env.AUTH_SECRET ||
+    devFallback
+  );
 }
 
 export function signToken(payload: object, maxAgeSeconds: number): string {
