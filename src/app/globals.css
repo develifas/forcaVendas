@@ -65,8 +65,9 @@
   color-scheme: light;
 }
 
+/* Sem escolha salva: segue o aparelho. Com escolha (data-theme no <html>): ela vence. */
 @media (prefers-color-scheme: dark) {
-  .store-root {
+  html:not([data-theme="light"]) .store-root {
     --st-bg: 11 18 32;
     --st-surface: 17 24 39;
     --st-surface2: 30 41 59;
@@ -80,6 +81,42 @@
     --st-danger: 248 113 113;
     color-scheme: dark;
   }
+}
+
+html[data-theme="dark"] .store-root {
+  --st-bg: 11 18 32;
+  --st-surface: 17 24 39;
+  --st-surface2: 30 41 59;
+  --st-border: 51 65 85;
+  --st-text: 241 245 249;
+  --st-muted: 148 163 184;
+  --st-accent: 56 189 248;
+  --st-accent-fg: 8 24 40;
+  --st-ok: 74 222 128;
+  --st-warn: 251 191 36;
+  --st-danger: 248 113 113;
+  color-scheme: dark;
+}
+
+/* Painel administrativo e login em modo escuro (classe .dark no <html>) */
+.dark {
+  --background: 222 47% 7%;
+  --foreground: 210 40% 96%;
+  --card: 222 40% 10%;
+  --card-foreground: 210 40% 96%;
+  --popover: 222 40% 10%;
+  --popover-foreground: 210 40% 96%;
+  --secondary: 217 33% 17%;
+  --secondary-foreground: 210 40% 96%;
+  --muted: 217 33% 15%;
+  --muted-foreground: 215 20% 70%;
+  --accent: 217 33% 20%;
+  --accent-foreground: 210 40% 96%;
+  --destructive: 0 70% 50%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 217 25% 22%;
+  --input: 217 25% 22%;
+  color-scheme: dark;
 }
 
 @keyframes st-bump {

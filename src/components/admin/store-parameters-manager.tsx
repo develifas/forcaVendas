@@ -11,6 +11,7 @@ import type {
 } from "@/lib/tenant-store";
 import {
   createPaymentMethodAction,
+  saveStoreBannersAction,
   saveStoreParametersAction,
   togglePaymentMethodAction,
 } from "@/modules/admin/actions";
@@ -121,12 +122,23 @@ export function StoreParametersManager({
   const handleBannerFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setBannerMsg({ type: "error", text: "O arquivo precisa ser uma imagem (PNG, JPG, WEBP)." });
+      return;
+    }
+    if (file.size > 12 * 1024 * 1024) {
+      setBannerMsg({ type: "error", text: "Imagem muito grande (máximo 12 MB)." });
+      return;
+    }
+    setBannerMsg(null);
     setBnImageName(file.name);
     const reader = new FileReader();
     reader.onload = () => {
       const src = reader.result;
       if (typeof src !== "string") return;
       const img = new Image();
+      img.onerror = () =>
+        setBannerMsg({ type: "error", text: "Não foi possível ler esta imagem. Tente outro arquivo." });
       img.onload = () => {
         const MAX_WIDTH = 1600;
         const MAX_HEIGHT = 900;
@@ -142,9 +154,11 @@ export function StoreParametersManager({
         canvas.height = height;
         const ctx = canvas.getContext("2d");
         if (ctx) {
+          // Fundo branco para PNG com transparência não virar preto no JPEG
+          ctx.fillStyle = "#FFFFFF";
+          ctx.fillRect(0, 0, width, height);
           ctx.drawImage(img, 0, 0, width, height);
-          const compressed = canvas.toDataURL("image/jpeg", 0.85);
-          setBnImageUrl(compressed);
+          setBnImageUrl(canvas.toDataURL("image/jpeg", 0.82));
         } else {
           setBnImageUrl(src);
         }
@@ -259,14 +273,42 @@ export function StoreParametersManager({
   };
 
   // Funções da Aba 5 (Banner's)
+  const [bannerMsg, setBannerMsg] = useState<{ type: "ok" | "error"; text: string } | null>(null);
+  const [bannerSaving, setBannerSaving] = useState(false);
+
+  /** Grava e publica os banners na loja imediatamente (sem depender do botão Salvar geral). */
+  const persistBanners = async (list: DbStoreBanner[], okMsg: string): Promise<boolean> => {
+    setBannerSaving(true);
+    setBannerMsg(null);
+    try {
+      const res = await saveStoreBannersAction(cnpj, JSON.stringify(list));
+      if (res.ok && res.banners) {
+        updateParam("banners", res.banners);
+        setBannerMsg({ type: "ok", text: okMsg });
+        return true;
+      }
+      setBannerMsg({ type: "error", text: res.error ?? "Não foi possível salvar o banner." });
+      return false;
+    } catch {
+      setBannerMsg({
+        type: "error",
+        text: "Falha ao enviar o banner. Tente uma imagem menor (até 8 MB).",
+      });
+      return false;
+    } finally {
+      setBannerSaving(false);
+    }
+  };
+
   const openNewBannerForm = () => {
     setEditingBannerId(null);
-    setBnName("pedidos online");
-    setBnImageName(`FV-0${params.banners.length + 1}.png`);
+    setBnName("");
+    setBnImageName("");
     setBnImageUrl("");
     setBnLinkUrl("");
     setBnOrder(params.banners.length + 1);
     setBnStatus("ativo");
+    setBannerMsg(null);
     setShowBannerForm(true);
   };
 
@@ -278,16 +320,24 @@ export function StoreParametersManager({
     setBnLinkUrl(b.linkUrl || "");
     setBnOrder(b.order);
     setBnStatus(b.status || (b.isActive === false ? "inativo" : "ativo"));
+    setBannerMsg(null);
     setShowBannerForm(true);
   };
 
-  const handleSaveBanner = () => {
-    if (!bnName.trim()) return;
+  const handleSaveBanner = async () => {
+    if (!bnName.trim()) {
+      setBannerMsg({ type: "error", text: "Informe o nome do banner." });
+      return;
+    }
+    if (!bnImageUrl) {
+      setBannerMsg({ type: "error", text: "Selecione a imagem do banner (arquivo do computador)." });
+      return;
+    }
     const item: DbStoreBanner = {
       id: editingBannerId || `bn-${Date.now()}`,
       name: bnName.trim(),
-      imageName: bnImageName.trim() || "FV-01.png",
-      imageUrl: bnImageUrl || "/produtos/p1.jpg",
+      imageName: bnImageName.trim() || "banner.jpg",
+      imageUrl: bnImageUrl,
       order: bnOrder,
       status: bnStatus,
       isActive: bnStatus === "ativo",
@@ -296,17 +346,23 @@ export function StoreParametersManager({
     const nextList = editingBannerId
       ? params.banners.map((x) => (x.id === editingBannerId ? item : x))
       : [...params.banners, item];
-    updateParam("banners", nextList);
-    setShowBannerForm(false);
-    setEditingBannerId(null);
+    const ok = await persistBanners(
+      nextList,
+      editingBannerId ? "Banner atualizado e publicado na loja." : "Banner incluído e publicado na loja."
+    );
+    if (ok) {
+      setShowBannerForm(false);
+      setEditingBannerId(null);
+    }
   };
 
-  const handleDeleteBanner = (id: string) => {
-    updateParam(
-      "banners",
-      params.banners.filter((x) => x.id !== id)
+  const handleDeleteBanner = async (id: string) => {
+    if (!window.confirm("Excluir este banner da loja?")) return;
+    const ok = await persistBanners(
+      params.banners.filter((x) => x.id !== id),
+      "Banner excluído da loja."
     );
-    if (viewingBanner?.id === id) setViewingBanner(null);
+    if (ok && viewingBanner?.id === id) setViewingBanner(null);
   };
 
   const tabClass = (active: boolean) =>
@@ -1263,16 +1319,50 @@ export function StoreParametersManager({
         )}
 
         {/* ===================================================================
-            ABA 5: BANNER'S (Fiel ao Print 5)
+            ABA 5: BANNER'S (Fiel ao Print 5 e com gravação instantânea)
            =================================================================== */}
         {activeTab === "banners" && (
           <div className="rounded-b border border-t-0 border-slate-200 bg-background p-5 text-xs">
-            <h2 className="border-b border-slate-400 pb-1.5 text-xs font-extrabold uppercase">
-              BANNER&apos;S CADASTRADOS:
-            </h2>
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-400 pb-2">
+              <h2 className="text-xs font-extrabold uppercase">
+                BANNER&apos;S CADASTRADOS:
+              </h2>
+              {bannerSaving && (
+                <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-sky-600 animate-pulse">
+                  <span className="h-2 w-2 rounded-full bg-sky-600 animate-ping" />
+                  Salvando alterações...
+                </span>
+              )}
+            </div>
+
+            {/* Alerta de feedback imediato */}
+            {bannerMsg && (
+              <div
+                className={`mt-3 rounded border p-3 text-xs font-medium ${
+                  bannerMsg.type === "ok"
+                    ? "border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200"
+                    : "border-red-300 bg-red-50 text-red-900 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200"
+                }`}
+              >
+                {bannerMsg.text}
+              </div>
+            )}
 
             {showBannerForm ? (
-              <div className="mt-4 space-y-4 rounded-lg border border-slate-300 p-4">
+              <div className="mt-4 space-y-4 rounded-lg border border-slate-300 bg-muted/20 p-4">
+                <div className="flex items-center justify-between border-b pb-2">
+                  <h3 className="font-bold text-sm text-foreground">
+                    {editingBannerId ? "Editar Banner" : "Cadastrar Novo Banner"}
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => setShowBannerForm(false)}
+                    className="text-muted-foreground hover:text-foreground text-xs"
+                  >
+                    Fechar
+                  </button>
+                </div>
+
                 <div className="grid gap-4 sm:grid-cols-3">
                   <label className="block font-bold">
                     Nome do Banner:
@@ -1280,12 +1370,12 @@ export function StoreParametersManager({
                       type="text"
                       value={bnName}
                       onChange={(e) => setBnName(e.target.value)}
-                      placeholder="pedidos online"
+                      placeholder="Ex: Promoção de Inverno"
                       className="mt-1 block h-9 w-full rounded border border-slate-300 bg-background px-3 text-sm"
                     />
                   </label>
                   <label className="block font-bold">
-                    Ordem:
+                    Ordem de Exibição:
                     <input
                       type="number"
                       min={1}
@@ -1317,13 +1407,17 @@ export function StoreParametersManager({
                       Imagem do Banner (subir do computador):
                       <input
                         type="file"
-                        accept="image/*"
+                        accept="image/png,image/jpeg,image/webp,image/gif"
                         onChange={handleBannerFileChange}
-                        className="mt-1 block text-xs"
+                        className="mt-1 block w-full text-xs file:mr-2 file:rounded file:border-0 file:bg-slate-200 file:px-3 file:py-1.5 file:text-xs file:font-semibold hover:file:bg-slate-300"
                       />
                     </label>
                     <p className="mt-1 text-[11px] text-muted-foreground">
-                      Arquivo selecionado: <b>{bnImageName}</b>
+                      {bnImageName ? (
+                        <>Arquivo selecionado: <b className="text-foreground">{bnImageName}</b></>
+                      ) : (
+                        "Formatos suportados: PNG, JPG, WebP. Tamanho recomendado: 1200x400 a 1920x600."
+                      )}
                     </p>
                   </div>
                   <div>
@@ -1344,7 +1438,7 @@ export function StoreParametersManager({
                 </div>
 
                 {bnImageUrl && (
-                  <div className="rounded border bg-slate-50 p-2 text-center">
+                  <div className="rounded border bg-slate-50 dark:bg-slate-900/40 p-2 text-center">
                     <p className="text-[11px] font-semibold text-muted-foreground mb-1">
                       Pré-visualização da imagem selecionada:
                     </p>
@@ -1352,25 +1446,31 @@ export function StoreParametersManager({
                     <img
                       src={bnImageUrl}
                       alt="Preview do Banner"
-                      className="mx-auto max-h-40 rounded object-contain shadow-xs"
+                      className="mx-auto max-h-48 w-auto rounded object-contain shadow-xs border"
                     />
                   </div>
                 )}
 
-                <div className="flex justify-end gap-2">
+                <div className="flex justify-end gap-2 border-t pt-3">
                   <button
                     type="button"
                     onClick={() => setShowBannerForm(false)}
-                    className="inline-flex h-9 items-center justify-center rounded border border-slate-400 bg-slate-100 px-4 text-xs font-semibold text-slate-900 hover:bg-slate-200"
+                    disabled={bannerSaving}
+                    className="inline-flex h-9 items-center justify-center rounded border border-slate-400 bg-slate-100 px-4 text-xs font-semibold text-slate-900 hover:bg-slate-200 disabled:opacity-50"
                   >
                     Cancelar
                   </button>
                   <button
                     type="button"
+                    disabled={bannerSaving}
                     onClick={handleSaveBanner}
-                    className="inline-flex h-9 items-center justify-center rounded bg-[#8CC63F] px-5 text-xs font-bold text-white hover:bg-[#7cb332]"
+                    className="inline-flex h-9 items-center justify-center rounded bg-[#8CC63F] px-5 text-xs font-bold text-white hover:bg-[#7cb332] disabled:opacity-50 shadow-xs"
                   >
-                    Incluir Banner
+                    {bannerSaving
+                      ? "Gravando na Loja..."
+                      : editingBannerId
+                      ? "Salvar e Atualizar Banner"
+                      : "Salvar e Incluir Banner"}
                   </button>
                 </div>
               </div>
@@ -1384,78 +1484,113 @@ export function StoreParametersManager({
                   Inserir
                 </button>
 
-                <div className="mt-4 overflow-x-auto">
-                  <table className="w-full border-collapse text-left text-xs">
-                    <thead>
-                      <tr className="border-b border-white bg-[#DCDCDC] text-slate-900">
-                        <th className="border-r border-white px-3 py-2.5 font-extrabold">
-                          Nome
-                        </th>
-                        <th className="border-r border-white px-3 py-2.5 font-extrabold">
-                          Imagem
-                        </th>
-                        <th className="w-20 border-r border-white px-3 py-2.5 text-center font-extrabold">
-                          Ordem
-                        </th>
-                        <th className="w-24 border-r border-white px-3 py-2.5 text-center font-extrabold">
-                          Status
-                        </th>
-                        <th className="w-28 px-3 py-2.5 text-center font-extrabold">
-                          Opções
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {params.banners.map((b) => (
-                        <tr
-                          key={b.id}
-                          className="border-b border-white bg-[#EFEFEF] text-slate-900"
-                        >
-                          <td className="border-r border-white px-3 py-2.5">
-                            {b.name}
-                          </td>
-                          <td className="border-r border-white px-3 py-2.5">
-                            {b.imageName}
-                          </td>
-                          <td className="border-r border-white px-3 py-2.5 text-center">
-                            {b.order}
-                          </td>
-                          <td className="border-r border-white px-3 py-2.5 text-center">
-                            {b.status}
-                          </td>
-                          <td className="px-2 py-2 text-center">
-                            <div className="inline-flex items-center gap-1">
-                              <button
-                                type="button"
-                                onClick={() => setViewingBanner(b)}
-                                className="inline-flex h-6 w-6 items-center justify-center rounded bg-[#8FA8B2] text-white"
-                              >
-                                <Eye className="h-3.5 w-3.5" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => openEditBannerForm(b)}
-                                className="inline-flex h-6 w-6 items-center justify-center rounded bg-[#8CC63F] text-white"
-                              >
-                                <Pencil className="h-3.5 w-3.5" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteBanner(b.id)}
-                                className="inline-flex h-6 w-6 items-center justify-center rounded bg-[#C00000] text-white"
-                              >
-                                <X className="h-3.5 w-3.5 stroke-[2.5]" />
-                              </button>
-                            </div>
-                          </td>
+                {params.banners.length === 0 ? (
+                  <div className="mt-4 rounded-lg border-2 border-dashed border-slate-300 p-8 text-center">
+                    <p className="text-sm font-semibold text-muted-foreground">
+                      Nenhum banner cadastrado no momento.
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Clique no botão verde <b>Inserir</b> acima para adicionar imagens promocionais na vitrine da sua loja virtual.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="mt-4 overflow-x-auto">
+                    <table className="w-full border-collapse text-left text-xs">
+                      <thead>
+                        <tr className="border-b border-white bg-[#DCDCDC] text-slate-900">
+                          <th className="border-r border-white px-3 py-2.5 font-extrabold">
+                            Nome
+                          </th>
+                          <th className="border-r border-white px-3 py-2.5 font-extrabold">
+                            Imagem
+                          </th>
+                          <th className="w-20 border-r border-white px-3 py-2.5 text-center font-extrabold">
+                            Ordem
+                          </th>
+                          <th className="w-24 border-r border-white px-3 py-2.5 text-center font-extrabold">
+                            Status
+                          </th>
+                          <th className="w-28 px-3 py-2.5 text-center font-extrabold">
+                            Opções
+                          </th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {params.banners.map((b) => (
+                          <tr
+                            key={b.id}
+                            className="border-b border-white bg-[#EFEFEF] text-slate-900 hover:bg-[#e4e4e4] transition-colors"
+                          >
+                            <td className="border-r border-white px-3 py-2.5 font-medium">
+                              {b.name}
+                            </td>
+                            <td className="border-r border-white px-3 py-2.5">
+                              <div className="flex items-center gap-2">
+                                {b.imageUrl && (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img
+                                    src={b.imageUrl}
+                                    alt={b.name}
+                                    className="h-7 w-12 rounded object-cover border border-slate-300 bg-white"
+                                  />
+                                )}
+                                <span className="truncate max-w-[200px]" title={b.imageName}>
+                                  {b.imageName}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="border-r border-white px-3 py-2.5 text-center font-semibold">
+                              {b.order}
+                            </td>
+                            <td className="border-r border-white px-3 py-2.5 text-center">
+                              <span
+                                className={`inline-block rounded px-2 py-0.5 text-[11px] font-bold ${
+                                  b.status === "ativo" || b.isActive !== false
+                                    ? "bg-emerald-100 text-emerald-800"
+                                    : "bg-slate-200 text-slate-600"
+                                }`}
+                              >
+                                {b.status || (b.isActive === false ? "inativo" : "ativo")}
+                              </span>
+                            </td>
+                            <td className="px-2 py-2 text-center">
+                              <div className="inline-flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  title="Visualizar banner"
+                                  onClick={() => setViewingBanner(b)}
+                                  className="inline-flex h-6 w-6 items-center justify-center rounded bg-[#8FA8B2] text-white hover:opacity-90"
+                                >
+                                  <Eye className="h-3.5 w-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  title="Editar banner"
+                                  onClick={() => openEditBannerForm(b)}
+                                  className="inline-flex h-6 w-6 items-center justify-center rounded bg-[#8CC63F] text-white hover:opacity-90"
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  title="Excluir banner"
+                                  disabled={bannerSaving}
+                                  onClick={() => handleDeleteBanner(b.id)}
+                                  className="inline-flex h-6 w-6 items-center justify-center rounded bg-[#C00000] text-white hover:opacity-90 disabled:opacity-50"
+                                >
+                                  <X className="h-3.5 w-3.5 stroke-[2.5]" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
 
                 {viewingBanner && (
-                  <div className="mt-3 rounded border bg-muted/40 p-3 text-xs space-y-2">
+                  <div className="mt-4 rounded-lg border bg-muted/40 p-4 text-xs space-y-3">
                     <div className="flex items-center justify-between">
                       <div>
                         <b>Banner Selecionado:</b> {viewingBanner.name} ({viewingBanner.imageName}) &bull; Ordem {viewingBanner.order} &bull; Status: {viewingBanner.status}
@@ -1463,33 +1598,42 @@ export function StoreParametersManager({
                       <button
                         type="button"
                         onClick={() => setViewingBanner(null)}
-                        className="text-xs text-muted-foreground hover:underline"
+                        className="text-xs text-muted-foreground hover:underline font-semibold"
                       >
-                        Fechar visualização
+                        ✕ Fechar visualização
                       </button>
                     </div>
-                    {viewingBanner.imageUrl && (
-                      <div className="max-w-md overflow-hidden rounded border bg-black/10">
+                    {viewingBanner.imageUrl ? (
+                      <div className="max-w-2xl overflow-hidden rounded-lg border bg-black/5 p-1 shadow-inner">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={viewingBanner.imageUrl}
                           alt={viewingBanner.name}
-                          className="max-h-48 w-full object-contain"
+                          className="max-h-64 w-full rounded object-contain bg-white"
                         />
                       </div>
+                    ) : (
+                      <p className="text-muted-foreground italic">Sem imagem carregada.</p>
                     )}
                   </div>
                 )}
 
                 <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t pt-4">
                   <span className="text-[11px] text-muted-foreground">
-                    * Clique em <b>Salvar</b> para gravar e publicar os banners na loja virtual (/loja/{cnpj}).
+                    * Os banners são salvos e sincronizados automaticamente com a loja virtual (<b>/loja/{cnpj}</b>) assim que você inclui ou edita.
                   </span>
                   <button
-                    type="submit"
-                    className="inline-flex h-9 items-center justify-center rounded border border-slate-400 bg-slate-100 px-6 text-xs font-bold text-slate-900 shadow-2xs transition hover:bg-slate-200"
+                    type="button"
+                    disabled={bannerSaving}
+                    onClick={async () => {
+                      await persistBanners(
+                        params.banners,
+                        "Banners salvos e sincronizados com a vitrine com sucesso!"
+                      );
+                    }}
+                    className="inline-flex h-9 items-center justify-center rounded border border-slate-400 bg-slate-100 px-6 text-xs font-bold text-slate-900 shadow-2xs transition hover:bg-slate-200 disabled:opacity-50"
                   >
-                    Salvar
+                    {bannerSaving ? "Salvando..." : "Salvar"}
                   </button>
                 </div>
               </div>

@@ -11,6 +11,7 @@ import {
   DbAccessLevelPermission,
   DbCustomerAddress,
   DbCustomerContact,
+  DbStoreBanner,
   DbStoreParameters,
   mutateTenantDatabase,
   OrderStatus,
@@ -20,6 +21,69 @@ import {
 } from "@/lib/tenant-store";
 import { isValidCnpj, isValidDocument, onlyDigits } from "@/lib/cnpj";
 import { hashPassword } from "@/lib/security";
+import { appendLog, generateToken, getIntegration, hashToken } from "@/lib/erp-sync";
+import type { ErpIntegrationMode } from "@/lib/tenant-store";
+
+const ERP_MODES: ErpIntegrationMode[] = ["undefined", "agent_api", "txt", "csv", "json", "database"];
+
+/** Salva a configuração (neutra quanto ao formato) da integração com o ERP. */
+export async function saveIntegrationConfigAction(formData: FormData) {
+  const cnpj = await requireActiveCnpj();
+  const rawMode = String(formData.get("mode") ?? "undefined") as ErpIntegrationMode;
+  const mode = ERP_MODES.includes(rawMode) ? rawMode : "undefined";
+  const interval = Math.min(60, Math.max(1, Number(formData.get("intervalMinutes")) || 5));
+
+  mutateTenantDatabase(cnpj, (db) => {
+    const integ = getIntegration(db);
+    integ.enabled = formData.get("enabled") === "on";
+    integ.erpName = String(formData.get("erpName") ?? "S2000Plus").trim().slice(0, 60) || "S2000Plus";
+    integ.mode = mode;
+    integ.dataLocation = String(formData.get("dataLocation") ?? "").trim().slice(0, 300);
+    integ.notes = String(formData.get("notes") ?? "").trim().slice(0, 2000);
+    integ.intervalMinutes = interval;
+    db.integration = integ;
+  });
+  appendLog(cnpj, { level: "info", action: "config", message: "Configuração da integração atualizada no painel." });
+  revalidatePath("/integration");
+}
+
+export interface TokenActionState {
+  token?: string;
+  error?: string;
+}
+
+/** Gera (ou renova) o token do agente. O token em texto puro é mostrado apenas uma vez. */
+export async function generateIntegrationTokenAction(
+  _prev: TokenActionState | null,
+  _formData: FormData
+): Promise<TokenActionState> {
+  const cnpj = await requireActiveCnpj();
+  const token = generateToken();
+  mutateTenantDatabase(cnpj, (db) => {
+    const integ = getIntegration(db);
+    integ.tokenHash = hashToken(token);
+    integ.tokenPrefix = token.slice(0, 8);
+    integ.tokenCreatedAt = new Date().toISOString();
+    integ.enabled = true;
+    db.integration = integ;
+  });
+  appendLog(cnpj, { level: "warn", action: "token", message: "Novo token de integração gerado (anterior invalidado)." });
+  revalidatePath("/integration");
+  return { token };
+}
+
+export async function revokeIntegrationTokenAction() {
+  const cnpj = await requireActiveCnpj();
+  mutateTenantDatabase(cnpj, (db) => {
+    const integ = getIntegration(db);
+    integ.tokenHash = null;
+    integ.tokenPrefix = null;
+    integ.tokenCreatedAt = null;
+    db.integration = integ;
+  });
+  appendLog(cnpj, { level: "warn", action: "token", message: "Token de integração revogado." });
+  revalidatePath("/integration");
+}
 
 async function requireActiveCnpj(): Promise<string> {
   const { activeTenant } = await getActiveTenant();
@@ -493,6 +557,66 @@ export async function priceQuoteItemAction(formData: FormData) {
 // ---------------------------------------------------------------------------
 // 6. CONFIGURAÇÕES DA LOJA, PARÂMETROS (6 ABAS) E PROVISIONAMENTO DE BANCO
 // ---------------------------------------------------------------------------
+/**
+ * Converte imagens base64 dos banners em arquivos públicos (/uploads/<cnpj>/...).
+ * Se o disco for somente leitura (ex.: Vercel), mantém a imagem embutida (data URL) em vez de falhar.
+ */
+function persistBannerImages(cnpj: string, banners: DbStoreBanner[]): DbStoreBanner[] {
+  const uploadDir = path.join(process.cwd(), "public", "uploads", cnpj);
+  return banners.map((b, idx) => {
+    if (!b.imageUrl || !b.imageUrl.startsWith("data:image/")) return b;
+    const match = /^data:image\/(jpeg|jpg|png|webp|gif);base64,(.+)$/i.exec(b.imageUrl);
+    if (!match) return b;
+    try {
+      const ext = match[1].toLowerCase() === "jpeg" ? "jpg" : match[1].toLowerCase();
+      const buf = Buffer.from(match[2], "base64");
+      fs.mkdirSync(uploadDir, { recursive: true });
+      const fileName = `banner-${Date.now()}-${idx}.${ext}`;
+      fs.writeFileSync(path.join(uploadDir, fileName), buf);
+      return { ...b, imageUrl: `/uploads/${cnpj}/${fileName}` };
+    } catch {
+      return b;
+    }
+  });
+}
+
+export interface SaveBannersResult {
+  ok: boolean;
+  error?: string;
+  banners?: DbStoreBanner[];
+}
+
+/** Grava somente os banners (publicação imediata na loja), sem depender do botão Salvar geral. */
+export async function saveStoreBannersAction(
+  cnpjFromClient: string,
+  bannersJson: string
+): Promise<SaveBannersResult> {
+  try {
+    const active = await requireActiveCnpj();
+    const cnpj = onlyDigits(cnpjFromClient) || active;
+    let incoming: DbStoreBanner[];
+    try {
+      const parsed = JSON.parse(bannersJson);
+      if (!Array.isArray(parsed)) throw new Error("formato");
+      incoming = parsed as DbStoreBanner[];
+    } catch {
+      return { ok: false, error: "Dados de banner inválidos." };
+    }
+    if (incoming.length > 20) return { ok: false, error: "Limite de 20 banners por loja." };
+
+    const saved = persistBannerImages(cnpj, incoming);
+    mutateTenantDatabase(cnpj, (db) => {
+      const current = db.storeParameters ?? createDefaultStoreParameters(cnpj);
+      db.storeParameters = { ...current, banners: saved };
+    });
+    revalidatePath(`/loja/${cnpj}`);
+    revalidatePath("/storefront");
+    return { ok: true, banners: saved };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Falha ao salvar os banners." };
+  }
+}
+
 export async function saveStoreParametersAction(formData: FormData) {
   const cnpjFromForm = String(formData.get("cnpj") ?? "").trim();
   const cnpj = cnpjFromForm || (await requireActiveCnpj());
@@ -522,26 +646,7 @@ export async function saveStoreParametersAction(formData: FormData) {
 
     // Salva imagens em base64 dos banners no disco para manter o JSON leve e performático
     if (nextParams.banners && Array.isArray(nextParams.banners)) {
-      const uploadDir = path.join(process.cwd(), "public", "uploads", cnpj);
-      if (!fs.existsSync(uploadDir)) {
-        fs.mkdirSync(uploadDir, { recursive: true });
-      }
-      nextParams.banners = nextParams.banners.map((b, idx) => {
-        if (b.imageUrl && b.imageUrl.startsWith("data:image/")) {
-          const match = /^data:image\/(jpeg|jpg|png|webp|gif);base64,(.+)$/i.exec(b.imageUrl);
-          if (match) {
-            const ext = match[1].toLowerCase() === "jpeg" ? "jpg" : match[1].toLowerCase();
-            const buf = Buffer.from(match[2], "base64");
-            const fileName = `banner-${Date.now()}-${idx}.${ext}`;
-            fs.writeFileSync(path.join(uploadDir, fileName), buf);
-            return {
-              ...b,
-              imageUrl: `/uploads/${cnpj}/${fileName}`,
-            };
-          }
-        }
-        return b;
-      });
+      nextParams.banners = persistBannerImages(cnpj, nextParams.banners);
     }
 
     db.storeParameters = nextParams;

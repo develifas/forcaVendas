@@ -6,6 +6,7 @@ import { TenantSwitcher } from "./tenant-switcher";
 import { TenantUserMembership } from "@/modules/tenants/types";
 import { logoutAction } from "@/modules/auth/actions";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { Menu, LogOut, User, ExternalLink, Database } from "lucide-react";
 
 interface TopbarProps {
@@ -58,6 +59,10 @@ export function Topbar({
 
       {/* Direct Link to Storefront + User Actions */}
       <div className="flex items-center gap-2.5">
+        <ThemeToggle
+          scope="admin"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border bg-background text-foreground transition hover:bg-accent"
+        />
         {activeCnpj && (
           <Link
             href={`/loja/${activeCnpj}`}

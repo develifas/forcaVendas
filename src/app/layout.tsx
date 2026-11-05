@@ -23,13 +23,18 @@ export const metadata: Metadata = {
   },
 };
 
+const themeInitScript = `try{var t=localStorage.getItem('fv-theme');if(t==='light'||t==='dark'){var d=document.documentElement;d.dataset.theme=t;if(t==='dark')d.classList.add('dark');}}catch(e){}`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       <body className={inter.className}>
         <PwaRegister />
         {children}

@@ -17,6 +17,7 @@ import {
   Settings,
   ShieldCheck,
   ArrowUpDown,
+  Plug,
   X,
 } from "lucide-react";
 
@@ -30,6 +31,7 @@ export const navigationItems = [
   { name: "Parâmetros & Loja", href: "/storefront", icon: Store },
   { name: "Usuários & Acesso", href: "/users", icon: ShieldCheck },
   { name: "Importar / Exportar", href: "/import-export", icon: ArrowUpDown },
+  { name: "Integração ERP", href: "/integration", icon: Plug },
   { name: "Relatórios", href: "/reports", icon: BarChart3 },
   { name: "Planos & Assinatura", href: "/subscription", icon: CreditCard },
   { name: "Roteamento & Bancos", href: "/settings", icon: Settings, masterOnly: true },

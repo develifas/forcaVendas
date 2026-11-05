@@ -19,6 +19,7 @@ import { getTenantDatabase } from "@/lib/tenant-store";
 import { initialOf } from "@/modules/store/format";
 import type { StoreSession } from "@/modules/store/session";
 import { CartBadge } from "./cart-context";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 interface Props {
   cnpj: string;
@@ -140,6 +141,10 @@ export function StoreHeader({ cnpj, name, session, q, ordem, vista, erro, entrar
         </form>
 
         <div className="ml-auto flex items-center gap-2 sm:ml-0">
+          <ThemeToggle
+            scope="store"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-store-border bg-store-surface text-store-text transition hover:bg-store-surface2 sm:h-10 sm:w-10"
+          />
           {session && (
             <Link
               href={`${base}/pedidos`}

@@ -241,6 +241,41 @@ export interface DbStoreOrder {
   items: DbOrderItem[];
   createdAt: string;
   updatedAt: string;
+  /** Código do pedido no ERP (preenchido após a confirmação de recebimento pelo ERP) */
+  erpCode?: string | null;
+  /** Data/hora em que o ERP confirmou o recebimento do pedido */
+  erpSyncedAt?: string | null;
+}
+
+/** Formato de troca de dados com o ERP (ainda em definição pela equipe). */
+export type ErpIntegrationMode = "undefined" | "agent_api" | "txt" | "csv" | "json" | "database";
+
+export interface DbErpSyncLog {
+  at: string;
+  level: "info" | "warn" | "error";
+  action: string;
+  message: string;
+}
+
+/** Configuração de integração com o ERP (ex.: S2000Plus) por empresa. Neutra quanto ao formato. */
+export interface DbErpIntegration {
+  enabled: boolean;
+  erpName: string;
+  mode: ErpIntegrationMode;
+  /** Informativo: onde ficam os arquivos/banco no computador do cliente (a definir) */
+  dataLocation: string;
+  /** Observações da equipe sobre layout/campos (a definir) */
+  notes: string;
+  intervalMinutes: number;
+  /** SHA-256 do token (o token em texto puro só é exibido uma vez) */
+  tokenHash: string | null;
+  tokenPrefix: string | null;
+  tokenCreatedAt: string | null;
+  lastHeartbeatAt: string | null;
+  lastCatalogSyncAt: string | null;
+  lastOrdersPullAt: string | null;
+  agentVersion: string | null;
+  logs: DbErpSyncLog[];
 }
 
 import { ACCESS_LEVEL_MODULES, type AccessLevelModuleKey } from "./constants";
@@ -493,16 +528,7 @@ export function createDefaultStoreParameters(cnpj: string): DbStoreParameters {
       },
     ],
 
-    banners: [
-      {
-        id: "bn-1",
-        name: "pedidos online",
-        imageName: "FV-01.png",
-        imageUrl: "/produtos/p1.jpg",
-        order: 1,
-        status: "ativo",
-      },
-    ],
+    banners: [],
   };
 }
 
@@ -517,6 +543,7 @@ export interface TenantDatabaseInstance {
   staffUsers?: DbStaffUser[];
   accessLevels?: DbAccessLevel[];
   storeParameters?: DbStoreParameters;
+  integration?: DbErpIntegration;
 }
 
 export interface PlatformDataFile {
