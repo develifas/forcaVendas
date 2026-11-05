@@ -15,7 +15,7 @@ interface Props {
 function apply(theme: Theme) {
   const root = document.documentElement;
   root.dataset.theme = theme;
-  root.classList.toggle("dark", theme === "dark");
+  root.classList.remove("dark");
 }
 
 /** Alternador claro/escuro com escolha salva no navegador (compartilhada entre loja e painel). */

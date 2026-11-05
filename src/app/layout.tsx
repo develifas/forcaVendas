@@ -23,7 +23,7 @@ export const metadata: Metadata = {
   },
 };
 
-const themeInitScript = `try{var t=localStorage.getItem('fv-theme');if(t==='light'||t==='dark'){var d=document.documentElement;d.dataset.theme=t;if(t==='dark')d.classList.add('dark');}}catch(e){}`;
+const themeInitScript = `try{var d=document.documentElement;d.classList.remove('dark');var t=localStorage.getItem('fv-theme');if(t==='light'||t==='dark'){d.dataset.theme=t;}}catch(e){}`;
 
 export default function RootLayout({
   children,

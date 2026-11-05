@@ -1,13 +1,11 @@
 "use client";
 
 import React from "react";
-import Link from "next/link";
 import { TenantSwitcher } from "./tenant-switcher";
 import { TenantUserMembership } from "@/modules/tenants/types";
 import { logoutAction } from "@/modules/auth/actions";
 import { Button } from "@/components/ui/button";
-import { ThemeToggle } from "@/components/theme-toggle";
-import { Menu, LogOut, User, ExternalLink } from "lucide-react";
+import { Menu, LogOut, User } from "lucide-react";
 
 interface TopbarProps {
   currentTenantId?: string;
@@ -24,10 +22,6 @@ export function Topbar({
   isMaster = false,
   onOpenMobileMenu,
 }: TopbarProps) {
-  const currentMembership =
-    memberships.find((m) => m.tenantId === currentTenantId) || memberships[0];
-  const activeCnpj = currentMembership?.tenant?.cnpj;
-
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-card px-4 lg:h-[60px] lg:px-6">
       <Button
@@ -49,27 +43,11 @@ export function Topbar({
         />
       </div>
 
-      {/* Direct Link to Storefront + User Actions */}
+      {/* User Actions */}
       <div className="flex items-center gap-2.5">
-        <ThemeToggle
-          scope="admin"
-          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border bg-background text-foreground transition hover:bg-accent"
-        />
-        {activeCnpj && (
-          <Link
-            href={`/loja/${activeCnpj}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-bold text-primary-foreground shadow-sm transition hover:opacity-90"
-          >
-            <span>Abrir Loja Virtual</span>
-            <ExternalLink className="h-3.5 w-3.5" />
-          </Link>
-        )}
-
         <div className="hidden items-center gap-2 border-r pr-3 text-xs text-muted-foreground sm:flex">
           <User className="h-3.5 w-3.5 text-muted-foreground" />
-          <span className="max-w-[200px] truncate">{userEmail || "usuário"}</span>
+          <span className="max-w-[220px] truncate">{userEmail || "usuário"}</span>
           {isMaster && (
             <span className="rounded bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-700">
               Master

@@ -48,19 +48,14 @@ export function StoreHeader({ cnpj, name, session, q, ordem, vista, erro, entrar
 
   return (
     <header className="sticky top-0 z-40 border-b border-store-border bg-store-surface/95 backdrop-blur">
-      {/* Barra Superior do Vendedor (Força de Vendas): aparece quando o vendedor está logado */}
+      {/* Barra Superior do Vendedor (Força de Vendas): limpa e em linha única */}
       {isSellerMode && session && (
-        <div className="border-b border-store-border bg-store-accent/15 px-4 py-2 text-xs">
+        <div className="border-b border-store-border bg-store-accent/15 px-4 py-1.5 text-xs">
           <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-lg bg-store-accent px-2.5 py-1 font-extrabold text-store-accentfg shadow-2xs">
-                <Briefcase className="h-3.5 w-3.5" />
-                Vendedor FV: {session.sellerName}
-              </span>
-              <span className="hidden text-store-muted md:inline">
-                Indique abaixo para qual cliente cadastrado você está lançando a venda:
-              </span>
-            </div>
+            <span className="inline-flex items-center gap-1.5 rounded-lg bg-store-accent px-2.5 py-1 font-bold text-store-accentfg shadow-2xs">
+              <Briefcase className="h-3.5 w-3.5" />
+              Vendedor: {(session.sellerName || "").split(" (")[0]}
+            </span>
 
             <form
               action={selectCustomerBySellerAction.bind(null, cnpj)}
@@ -69,16 +64,16 @@ export function StoreHeader({ cnpj, name, session, q, ordem, vista, erro, entrar
               <input type="hidden" name="next" value={next} />
               <label className="flex items-center gap-1.5 font-bold text-store-text">
                 <Users className="h-3.5 w-3.5 text-store-accent" />
-                <span className="hidden sm:inline">Cliente da Compra:</span>
+                <span className="hidden sm:inline">Cliente:</span>
                 <select
                   name="customerId"
                   defaultValue={session.cid || ""}
-                  className="h-8 max-w-[260px] rounded-lg border border-store-border bg-store-surface px-2.5 text-xs font-bold text-store-text focus:outline-none focus:ring-2 focus:ring-store-accent sm:max-w-[340px]"
+                  className="h-8 max-w-[200px] rounded-lg border border-store-border bg-store-surface px-2.5 text-xs font-bold text-store-text focus:outline-none focus:ring-2 focus:ring-store-accent sm:max-w-[280px]"
                 >
-                  <option value="">Consumidor Final (Sem CNPJ vinculado)</option>
+                  <option value="">Consumidor Final</option>
                   {activeCustomers.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.name} • {formatCnpj(c.document)}
+                      {c.name}
                       {c.discountPercent > 0 ? ` (-${c.discountPercent}%)` : ""}
                     </option>
                   ))}
@@ -86,17 +81,17 @@ export function StoreHeader({ cnpj, name, session, q, ordem, vista, erro, entrar
               </label>
               <button
                 type="submit"
-                className="h-8 rounded-lg bg-store-accent px-3 text-xs font-extrabold text-store-accentfg transition hover:opacity-90"
+                className="h-8 rounded-lg bg-store-accent px-3 text-xs font-bold text-store-accentfg transition hover:opacity-90"
               >
-                Selecionar Cliente
+                Trocar
               </button>
               <Link
                 href="/"
                 className="inline-flex h-8 items-center gap-1 rounded-lg border border-store-border bg-store-surface px-2.5 text-xs font-bold text-store-text hover:bg-store-surface2"
-                title="Abrir Área Administrativa do Força de Vendas desta empresa"
+                title="Abrir Painel Administrativo"
               >
                 <LayoutDashboard className="h-3.5 w-3.5 text-store-accent" />
-                <span className="hidden lg:inline">Painel Força de Vendas</span>
+                <span className="hidden md:inline">Painel</span>
               </Link>
             </form>
           </div>
@@ -169,11 +164,7 @@ export function StoreHeader({ cnpj, name, session, q, ordem, vista, erro, entrar
             <summary className="flex h-11 cursor-pointer list-none items-center gap-2 rounded-xl border border-store-border bg-store-surface px-3 text-sm font-bold text-store-text transition hover:bg-store-surface2 sm:h-10 [&::-webkit-details-marker]:hidden">
               <User className="h-4 w-4 text-store-accent" aria-hidden />
               <span className="max-w-[9rem] truncate">
-                {session
-                  ? isSellerMode
-                    ? `Cliente: ${session.name}`
-                    : session.name
-                  : "Entrar (Cliente / FV)"}
+                {session ? session.name : "Entrar (Cliente / FV)"}
               </span>
               {session && (session.discountPercent ?? 0) > 0 && (
                 <span className="rounded-full bg-store-ok/20 px-1.5 py-0.5 text-[10px] font-extrabold text-store-ok">
@@ -182,22 +173,17 @@ export function StoreHeader({ cnpj, name, session, q, ordem, vista, erro, entrar
               )}
             </summary>
 
-            <div className="absolute right-0 z-50 mt-2 w-[min(22rem,calc(100vw-2rem))] rounded-2xl border border-store-border bg-store-surface p-4 shadow-xl">
+            <div className="fixed inset-x-3 top-28 z-50 rounded-2xl border border-store-border bg-store-surface p-4 shadow-2xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-80">
               {session ? (
                 <div className="space-y-3">
-                  {isSellerMode && (
-                    <div className="rounded-xl border border-store-accent/30 bg-store-accent/10 p-2.5 text-xs">
-                      <p className="font-bold text-store-accent">
-                        Vendedor ativo: {session.sellerName} ({session.sellerUsername})
+                  <div className="border-b border-store-border pb-2.5">
+                    {isSellerMode && (
+                      <p className="mb-1 text-xs font-bold text-store-accent">
+                        Vendedor: {(session.sellerName || "").split(" (")[0]}
                       </p>
-                      <p className="mt-0.5 text-[11px] text-store-muted">
-                        Use a barra superior para trocar o cliente da venda a qualquer momento.
-                      </p>
-                    </div>
-                  )}
-                  <div>
-                    <p className="text-xs text-store-muted">
-                      {isSellerMode ? "Cliente selecionado para a compra" : "Cliente conectado"}
+                    )}
+                    <p className="text-[11px] text-store-muted">
+                      {isSellerMode ? "Cliente selecionado" : "Cliente conectado"}
                     </p>
                     <p className="text-sm font-extrabold uppercase text-store-text">{session.name}</p>
                     {session.doc && (
@@ -205,26 +191,20 @@ export function StoreHeader({ cnpj, name, session, q, ordem, vista, erro, entrar
                     )}
                     {(session.discountPercent ?? 0) > 0 && (
                       <p className="mt-1 text-xs font-bold text-store-ok">
-                        Condição especial ativa: {session.discountPercent}% de desconto no carrinho
+                        Desconto especial: -{session.discountPercent}%
                       </p>
                     )}
                   </div>
                   <Link
                     href={`${base}/pedidos`}
-                    className="flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-store-surface2 text-xs font-bold text-store-text hover:bg-store-border/50"
+                    className="flex h-9 w-full items-center justify-center gap-2 rounded-xl bg-store-surface2 text-xs font-bold text-store-text hover:bg-store-border/50"
                   >
-                    <ClipboardList className="h-4 w-4" /> Ver histórico de pedidos
-                  </Link>
-                  <Link
-                    href="/login"
-                    className="flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-store-border text-xs font-bold text-store-text hover:bg-store-surface2"
-                  >
-                    <Building2 className="h-4 w-4 text-store-accent" /> Login Central Força de Vendas
+                    <ClipboardList className="h-4 w-4" /> Meus Pedidos
                   </Link>
                   <form action={logoutAction.bind(null, cnpj)}>
                     <button
                       type="submit"
-                      className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-store-border text-sm font-bold text-store-text hover:bg-store-surface2"
+                      className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-xl border border-store-border text-xs font-bold text-store-text hover:bg-store-surface2"
                     >
                       <LogOut className="h-4 w-4" aria-hidden /> Sair
                     </button>
