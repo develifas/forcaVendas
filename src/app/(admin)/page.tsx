@@ -20,6 +20,7 @@ import {
   ArrowRight,
   RefreshCw,
   ExternalLink,
+  Store,
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -77,14 +78,29 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* Cabeçalho limpo e direto */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
-          Painel • {activeTenant?.name}
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Visão geral de vendas, catálogo e operações da sua loja.
-        </p>
+      {/* Cabeçalho limpo com um único botão de Abrir Loja para a empresa selecionada */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
+            Painel • {activeTenant?.name}
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Visão geral de vendas, catálogo e operações da sua loja.
+          </p>
+        </div>
+
+        {activeTenant && (
+          <Link
+            href={`/loja/${activeTenant.cnpj}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex h-10 shrink-0 items-center gap-2 rounded-lg bg-primary px-4 text-xs font-bold text-primary-foreground shadow-sm transition hover:opacity-90"
+          >
+            <Store className="h-4 w-4" />
+            Abrir Loja
+            <ExternalLink className="h-3.5 w-3.5" />
+          </Link>
+        )}
       </div>
 
       {/* KPIs com dados reais do negócio */}
@@ -196,15 +212,6 @@ export default async function DashboardPage() {
           {orders.length === 0 ? (
             <div className="py-8 text-center text-sm text-muted-foreground">
               <p>Nenhum pedido recebido ainda nesta loja.</p>
-              {activeTenant && (
-                <Link
-                  href={`/loja/${activeTenant.cnpj}`}
-                  target="_blank"
-                  className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
-                >
-                  Abrir vitrine da loja <ExternalLink className="h-3 w-3" />
-                </Link>
-              )}
             </div>
           ) : (
             <div className="overflow-x-auto">

@@ -362,18 +362,6 @@ export function TenantSwitcher({
                         </button>
                       )}
 
-                      {/* Link rápido para abrir a vitrine dessa loja em nova aba */}
-                      <Link
-                        href={`/loja/${m.tenant.cnpj}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        title="Abrir vitrine desta loja em nova aba"
-                        className="rounded p-1 text-muted-foreground/60 opacity-0 transition hover:bg-muted hover:text-primary group-hover:opacity-100"
-                      >
-                        <ExternalLink className="h-3.5 w-3.5" />
-                      </Link>
-
                       {isSelected && <Check className="ml-0.5 h-4 w-4 shrink-0 text-primary" />}
                     </div>
                   </div>
