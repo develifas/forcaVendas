@@ -185,16 +185,12 @@ export function TenantSwitcher({
         </div>
         <div className="flex flex-col text-left">
           <div className="flex items-center gap-1.5">
-            <span className="max-w-[170px] truncate text-xs font-bold leading-none sm:max-w-[210px]">
+            <span className="max-w-[200px] truncate text-xs font-bold leading-none sm:max-w-[260px]">
               {currentMembership?.tenant?.name || "Empresa"}
             </span>
-            {isMaster ? (
+            {isMaster && (
               <span className="rounded bg-amber-500/20 px-1.5 py-0.5 font-mono text-[10px] font-bold text-amber-700">
                 Master ({memberships.length})
-              </span>
-            ) : (
-              <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 font-mono text-[10px] font-bold text-emerald-700">
-                Ativa
               </span>
             )}
           </div>
@@ -204,37 +200,30 @@ export function TenantSwitcher({
               : currentMembership?.roleName}
           </span>
         </div>
-        <kbd className="ml-1 hidden rounded border bg-muted/70 px-1.5 py-0.5 font-mono text-[10px] font-medium text-muted-foreground sm:inline-block">
-          Ctrl K
-        </kbd>
+        {isMaster && (
+          <kbd className="ml-1 hidden rounded border bg-muted/70 px-1.5 py-0.5 font-mono text-[10px] font-medium text-muted-foreground sm:inline-block">
+            Ctrl K
+          </kbd>
+        )}
         <ChevronDown
           className={`h-4 w-4 opacity-60 transition-transform ${isOpen ? "rotate-180" : ""}`}
         />
       </button>
 
       {isOpen && (
-        <div className="absolute left-0 z-50 mt-2 w-[340px] rounded-xl border bg-popover text-popover-foreground shadow-xl sm:w-[430px]">
+        <div className="absolute left-0 z-50 mt-2 w-[320px] rounded-xl border bg-popover text-popover-foreground shadow-xl sm:w-[380px]">
           {/* Cabeçalho de Contexto */}
-          <div className="border-b bg-muted/20 p-3">
+          <div className="border-b bg-muted/20 px-3 py-2.5">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-extrabold uppercase text-foreground">
-                {isMaster ? "Alternar Loja / CNPJ" : "Empresa Conectada"}
+              <span className="text-xs font-bold text-foreground">
+                {isMaster ? "Alternar Empresa" : "Empresa Ativa"}
               </span>
-              <span
-                className={`rounded px-2 py-0.5 text-[10px] font-bold ${
-                  isMaster
-                    ? "bg-amber-500/20 text-amber-700"
-                    : "bg-emerald-500/15 text-emerald-700"
-                }`}
-              >
-                {isMaster ? "Acesso Master Global" : "Acesso Exclusivo"}
-              </span>
+              {isMaster && (
+                <span className="rounded bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-700">
+                  Master
+                </span>
+              )}
             </div>
-            {!isMaster && (
-              <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
-                Sua conta está limitada exclusivamente aos dados da empresa logada. Outras lojas do sistema estão protegidas e ocultas.
-              </p>
-            )}
           </div>
 
           {/* Barra de Busca Instantânea (Apenas se for Master e tiver múltiplas lojas) */}
@@ -349,37 +338,29 @@ export function TenantSwitcher({
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">
                           <span className="truncate font-bold">{m.tenant.name}</span>
-                          {isSelected && (
-                            <span className="rounded bg-primary/20 px-1.5 py-0.2 text-[9px] font-bold uppercase text-primary">
-                              Ativa
-                            </span>
-                          )}
                         </div>
-                        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono text-[10px] text-muted-foreground">
+                        <div className="mt-0.5 font-mono text-[10px] text-muted-foreground">
                           <span>{formatCnpj(m.tenant.cnpj)}</span>
-                          <span>•</span>
-                          <span className="inline-flex items-center gap-1 text-[10px]">
-                            <Database className="h-2.5 w-2.5 shrink-0 text-primary" />
-                            {m.tenant.dbName}
-                          </span>
                         </div>
                       </div>
                     </div>
 
                     <div className="flex shrink-0 items-center gap-1">
-                      {/* Botão de Fixar (Favorito) */}
-                      <button
-                        type="button"
-                        onClick={(e) => togglePin(e, m.tenantId)}
-                        title={isPinned ? "Desafixar loja" : "Fixar loja no topo"}
-                        className={`rounded p-1 transition ${
-                          isPinned
-                            ? "text-amber-500 hover:bg-amber-500/10"
-                            : "text-muted-foreground/40 opacity-0 hover:bg-muted hover:text-foreground group-hover:opacity-100"
-                        }`}
-                      >
-                        <Star className={`h-3.5 w-3.5 ${isPinned ? "fill-current" : ""}`} />
-                      </button>
+                      {/* Botão de Fixar (Favorito) - apenas se houver múltiplas lojas */}
+                      {isMaster && (
+                        <button
+                          type="button"
+                          onClick={(e) => togglePin(e, m.tenantId)}
+                          title={isPinned ? "Desafixar loja" : "Fixar loja no topo"}
+                          className={`rounded p-1 transition ${
+                            isPinned
+                              ? "text-amber-500 hover:bg-amber-500/10"
+                              : "text-muted-foreground/40 opacity-0 hover:bg-muted hover:text-foreground group-hover:opacity-100"
+                          }`}
+                        >
+                          <Star className={`h-3.5 w-3.5 ${isPinned ? "fill-current" : ""}`} />
+                        </button>
+                      )}
 
                       {/* Link rápido para abrir a vitrine dessa loja em nova aba */}
                       <Link
@@ -402,8 +383,8 @@ export function TenantSwitcher({
           </div>
 
           {/* Rodapé com atalhos e link rápido para provisionar novo CNPJ (Apenas Master Admin) */}
-          <div className="flex items-center justify-between border-t bg-muted/30 px-3 py-2 text-[11px]">
-            {isMaster ? (
+          {isMaster && (
+            <div className="flex items-center justify-between border-t bg-muted/30 px-3 py-2 text-[11px]">
               <Link
                 href="/settings"
                 onClick={() => setIsOpen(false)}
@@ -412,17 +393,11 @@ export function TenantSwitcher({
                 <PlusCircle className="h-3.5 w-3.5" />
                 Nova Loja / CNPJ
               </Link>
-            ) : (
-              <span className="text-[11px] font-semibold text-muted-foreground">
-                Empresa exclusiva da sessão
+              <span className="hidden text-[10px] text-muted-foreground sm:inline">
+                ↑↓ navegar • Enter • Esc
               </span>
-            )}
-            <span className="hidden text-[10px] text-muted-foreground sm:inline">
-              {isMaster
-                ? "↑↓ navegar • Enter selecionar • Esc fechar"
-                : "Esc fechar"}
-            </span>
-          </div>
+            </div>
+          )}
         </div>
       )}
     </div>

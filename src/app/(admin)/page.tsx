@@ -2,7 +2,6 @@ import React from "react";
 import Link from "next/link";
 import { getActiveTenant } from "@/modules/tenants/resolver";
 import { getTenantDatabase } from "@/lib/tenant-store";
-import { formatCnpj } from "@/lib/cnpj";
 import { formatBRL } from "@/modules/store/format";
 import {
   Card,
@@ -12,27 +11,21 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  Building2,
   Package,
   Users,
   ShoppingCart,
   BadgeDollarSign,
-  ExternalLink,
-  Database,
-  Layers,
-  CreditCard,
-  Settings,
   FileText,
-  Store,
+  Settings,
   ArrowRight,
-  Lock,
-  Upload,
+  RefreshCw,
+  ExternalLink,
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const { activeTenant, userMemberships } = await getActiveTenant();
+  const { activeTenant } = await getActiveTenant();
   const db = activeTenant ? getTenantDatabase(activeTenant.cnpj) : null;
 
   const productsCount = db?.products.length ?? 0;
@@ -43,166 +36,70 @@ export default async function DashboardPage() {
   const billedOrders = orders.filter((o) => o.status === "faturado" || o.status === "aprovado");
   const totalRevenueCents = billedOrders.reduce((acc, o) => acc + o.totalCents, 0);
 
-  // Tiles inspirados nos prints 3 e 4 ("Administrar" e "Cadastros")
-  const quickTiles = [
+  const quickShortcuts = [
     {
-      title: "PRODUTOS",
-      subtitle: `${productsCount} cadastrados`,
+      title: "Produtos & Catálogo",
+      description: `${productsCount} produtos em ${groupsCount} categorias`,
       href: "/products",
       icon: Package,
-      bg: "bg-amber-600 hover:bg-amber-700",
     },
     {
-      title: "GRUPO / SUBGRUPO",
-      subtitle: `${groupsCount} categorias`,
-      href: "/products#grupos",
-      icon: Layers,
-      bg: "bg-stone-600 hover:bg-stone-700",
-    },
-    {
-      title: "CLIENTES",
-      subtitle: `${customersCount} com login na loja`,
-      href: "/customers",
-      icon: Users,
-      bg: "bg-teal-600 hover:bg-teal-700",
-    },
-    {
-      title: "FORMA DE PAGAMENTO",
-      subtitle: `${db?.paymentMethods.length ?? 0} opções ativas`,
-      href: "/storefront#pagamentos",
-      icon: CreditCard,
-      bg: "bg-cyan-600 hover:bg-cyan-700",
-    },
-    {
-      title: "PEDIDOS & VENDAS",
-      subtitle: `${orders.length} registros`,
+      title: "Pedidos & Vendas",
+      description: `${orders.length} pedidos registrados`,
       href: "/orders",
       icon: ShoppingCart,
-      bg: "bg-lime-600 hover:bg-lime-700",
     },
     {
-      title: "ORÇAMENTOS",
-      subtitle: `${quotesCount} aguardando cotação`,
+      title: "Orçamentos",
+      description: `${quotesCount} cotações sob consulta`,
       href: "/quotes",
       icon: FileText,
-      bg: "bg-orange-500 hover:bg-orange-600",
     },
     {
-      title: "PARÂMETROS / BANCOS",
-      subtitle: "Cores, CNPJ e roteamento",
-      href: "/settings",
-      icon: Settings,
-      bg: "bg-blue-700 hover:bg-blue-800",
+      title: "Clientes",
+      description: `${customersCount} clientes cadastrados`,
+      href: "/customers",
+      icon: Users,
     },
     {
-      title: "LOJA VIRTUAL",
-      subtitle: activeTenant ? `/loja/${activeTenant.cnpj}` : "Vitrine online",
+      title: "Parâmetros da Loja",
+      description: "Banners, dados gerais e pagamentos",
       href: "/storefront",
-      icon: Store,
-      bg: "bg-slate-700 hover:bg-slate-800",
+      icon: Settings,
     },
     {
-      title: "USUÁRIOS & ACESSO",
-      subtitle: "Níveis de acesso e equipe",
-      href: "/users",
-      icon: Lock,
-      bg: "bg-indigo-600 hover:bg-indigo-700",
-    },
-    {
-      title: "IMPORTAR / EXPORTAR",
-      subtitle: "Catálogo e pedidos CSV",
-      href: "/import-export",
-      icon: Upload,
-      bg: "bg-orange-600 hover:bg-orange-700",
-    },
-    {
-      title: "PLANOS & ASSINATURA",
-      subtitle: "Limites e upgrade SaaS",
-      href: "/subscription",
-      icon: CreditCard,
-      bg: "bg-emerald-700 hover:bg-emerald-800",
-    },
-    {
-      title: "VENDAS FATURADAS",
-      subtitle: formatBRL(totalRevenueCents),
-      href: "/sales",
-      icon: BadgeDollarSign,
-      bg: "bg-sky-700 hover:bg-sky-800",
+      title: "Integração ERP",
+      description: "Sincronizador FV Sync e banco local",
+      href: "/integration",
+      icon: RefreshCw,
     },
   ];
 
   return (
     <div className="space-y-6">
-      {/* Cabeçalho integrado com a loja ativa */}
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
-              Administrar • {activeTenant?.name}
-            </h1>
-            {activeTenant && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-3 py-0.5 font-mono text-xs font-bold text-foreground">
-                <Database className="h-3.5 w-3.5 text-primary" />
-                {activeTenant.dbName}
-              </span>
-            )}
-          </div>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Painel SaaS interligado em tempo real com a vitrine{" "}
-            {activeTenant && (
-              <Link
-                href={`/loja/${activeTenant.cnpj}`}
-                target="_blank"
-                className="font-semibold text-foreground underline"
-              >
-                /loja/{activeTenant.cnpj}
-              </Link>
-            )}{" "}
-            ({userMemberships.length} empresas no roteador central)
-          </p>
-        </div>
-
-        {activeTenant && (
-          <div className="flex flex-wrap items-center gap-2">
-            <Link
-              href={`/loja/${activeTenant.cnpj}`}
-              target="_blank"
-              className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-4 text-xs font-bold text-primary-foreground shadow transition hover:opacity-90"
-            >
-              <Store className="h-4 w-4" />
-              Acessar Loja ({formatCnpj(activeTenant.cnpj)})
-              <ExternalLink className="h-3.5 w-3.5" />
-            </Link>
-          </div>
-        )}
+      {/* Cabeçalho limpo e direto */}
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
+          Painel • {activeTenant?.name}
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Visão geral de vendas, catálogo e operações da sua loja.
+        </p>
       </div>
 
-      {/* KPIs em Tempo Real do Banco da Empresa */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {/* KPIs com dados reais do negócio */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Banco Dedicado (CNPJ)</CardTitle>
-            <Building2 className="h-4 w-4 text-primary" />
+            <CardTitle className="text-sm font-medium">Vendas Aprovadas</CardTitle>
+            <BadgeDollarSign className="h-4 w-4 text-emerald-600" />
           </CardHeader>
           <CardContent>
-            <div className="truncate text-lg font-bold">
-              {activeTenant ? formatCnpj(activeTenant.cnpj) : "—"}
+            <div className="text-2xl font-bold text-emerald-600">
+              {formatBRL(totalRevenueCents)}
             </div>
-            <p className="mt-1 font-mono text-xs text-muted-foreground">
-              {activeTenant?.dbName}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Catálogo na Vitrine</CardTitle>
-            <Package className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{productsCount} produtos</div>
             <p className="mt-1 text-xs text-muted-foreground">
-              Distribuídos em <b>{groupsCount}</b> grupos/subgrupos
+              {billedOrders.length} pedido(s) faturados ou aprovados
             </p>
           </CardContent>
         </Card>
@@ -215,48 +112,64 @@ export default async function DashboardPage() {
           <CardContent>
             <div className="text-2xl font-bold">{orders.length}</div>
             <p className="mt-1 text-xs text-muted-foreground">
-              <b>{quotesCount}</b> orçamento(s) sob consulta
+              {quotesCount} cotação(ões) sob consulta
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Vendas Aprovadas/Faturadas</CardTitle>
-            <BadgeDollarSign className="h-4 w-4 text-primary" />
+            <CardTitle className="text-sm font-medium">Catálogo na Vitrine</CardTitle>
+            <Package className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-emerald-600">
-              {formatBRL(totalRevenueCents)}
-            </div>
+            <div className="text-2xl font-bold">{productsCount} produtos</div>
             <p className="mt-1 text-xs text-muted-foreground">
-              <b>{customersCount}</b> clientes habilitados no login
+              Distribuídos em {groupsCount} categorias
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Clientes Cadastrados</CardTitle>
+            <Users className="h-4 w-4 text-primary" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{customersCount}</div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Base de clientes habilitados
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Central de Acesso Rápido em Tiles (estilo Força de Vendas dos prints 3 e 4) */}
+      {/* Atalhos Rápidos Operacionais (Visual limpo e integrado) */}
       <div>
-        <h2 className="mb-3 text-sm font-bold uppercase tracking-wider text-muted-foreground">
-          Início | Administrar | Cadastros &amp; Operações
+        <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+          Atalhos Operacionais
         </h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {quickTiles.map((tile) => {
-            const Icon = tile.icon;
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {quickShortcuts.map((item) => {
+            const Icon = item.icon;
             return (
               <Link
-                key={tile.title}
-                href={tile.href}
-                className={`group flex flex-col items-center justify-center rounded-xl p-5 text-center text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${tile.bg}`}
+                key={item.title}
+                href={item.href}
+                className="group flex items-center gap-3.5 rounded-xl border bg-card p-4 shadow-2xs transition hover:border-primary hover:bg-muted/40 hover:shadow-xs"
               >
-                <Icon className="h-9 w-9 stroke-[1.75] transition-transform group-hover:scale-110" />
-                <span className="mt-3 text-xs font-extrabold tracking-wide">
-                  {tile.title}
-                </span>
-                <span className="mt-0.5 text-[11px] text-white/80">
-                  {tile.subtitle}
-                </span>
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary transition group-hover:bg-primary group-hover:text-primary-foreground">
+                  <Icon className="h-5 w-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className="block font-bold text-foreground text-sm group-hover:text-primary transition-colors">
+                    {item.title}
+                  </span>
+                  <span className="block truncate text-xs text-muted-foreground">
+                    {item.description}
+                  </span>
+                </div>
+                <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground/60 transition group-hover:translate-x-0.5 group-hover:text-primary" />
               </Link>
             );
           })}
@@ -267,9 +180,9 @@ export default async function DashboardPage() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle>Últimos Pedidos e Orçamentos da Loja</CardTitle>
-            <CardDescription>
-              Sincronizados automaticamente quando o cliente finaliza o carrinho em /loja/{activeTenant?.cnpj}
+            <CardTitle className="text-base">Últimos Pedidos da Loja</CardTitle>
+            <CardDescription className="text-xs">
+              Pedidos recebidos pela loja virtual e equipe de vendas
             </CardDescription>
           </div>
           <Link
@@ -281,13 +194,18 @@ export default async function DashboardPage() {
         </CardHeader>
         <CardContent>
           {orders.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">
-              Nenhum pedido recebido ainda nesta loja. Faça um pedido de teste em{" "}
-              <Link href={`/loja/${activeTenant?.cnpj}`} className="font-bold underline">
-                /loja/{activeTenant?.cnpj}
-              </Link>
-              .
-            </p>
+            <div className="py-8 text-center text-sm text-muted-foreground">
+              <p>Nenhum pedido recebido ainda nesta loja.</p>
+              {activeTenant && (
+                <Link
+                  href={`/loja/${activeTenant.cnpj}`}
+                  target="_blank"
+                  className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
+                >
+                  Abrir vitrine da loja <ExternalLink className="h-3 w-3" />
+                </Link>
+              )}
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
