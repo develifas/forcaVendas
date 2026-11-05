@@ -75,56 +75,46 @@ export default function LoginPage() {
               <div className="space-y-1.5">
                 <label className="flex items-center gap-1.5 text-xs font-bold" htmlFor="company">
                   <Building2 className="h-3.5 w-3.5 text-primary" />
-                  Empresa (Código FV ou CNPJ)
+                  Empresa
                 </label>
                 <Input
                   id="company"
                   name="company"
                   value={company}
                   onChange={(e) => setCompany(e.target.value)}
-                  placeholder="Ex.: pro-control, computiva, ig_fv ou CNPJ"
+                  placeholder="Código da empresa ou CNPJ"
                   required
                 />
-                <p className="text-[11px] text-muted-foreground">
-                  Aceita o código (<code className="font-bold">pro-control</code>,{" "}
-                  <code className="font-bold">computiva</code>, <code className="font-bold">ig_fv</code>) ou o
-                  CNPJ (<code className="font-bold">35951466000157</code>,{" "}
-                  <code className="font-bold">03358951000198</code>).
-                </p>
               </div>
 
               <div className="space-y-1.5">
                 <label className="flex items-center gap-1.5 text-xs font-bold" htmlFor="username">
                   <UserCheck className="h-3.5 w-3.5 text-primary" />
-                  Usuário (Vendedor) ou CNPJ do Cliente
+                  Usuário
                 </label>
                 <Input
                   id="username"
                   name="username"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Ex.: adilson, admin ou CNPJ do cliente"
+                  placeholder="Usuário ou CNPJ"
                   required
                   autoComplete="username"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="flex items-center gap-1.5 text-xs font-bold" htmlFor="password">
-                    <KeyRound className="h-3.5 w-3.5 text-primary" />
-                    Senha
-                  </label>
-                  <span className="text-[11px] text-muted-foreground">
-                    Cliente: normalmente é o próprio CNPJ/CPF
-                  </span>
-                </div>
+                <label className="flex items-center gap-1.5 text-xs font-bold" htmlFor="password">
+                  <KeyRound className="h-3.5 w-3.5 text-primary" />
+                  Senha
+                </label>
                 <Input
                   id="password"
                   name="password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Sua senha"
                   required
                   autoComplete="current-password"
                 />
@@ -132,7 +122,7 @@ export default function LoginPage() {
 
               {/* Escolha para onde ir após autenticar */}
               <div className="space-y-1.5 pt-1">
-                <span className="block text-xs font-bold">Módulo de destino após entrar:</span>
+                <span className="block text-xs font-bold">Módulo de destino:</span>
                 <input type="hidden" name="destination" value={destination} />
                 <div className="grid grid-cols-2 gap-2">
                   <button
@@ -146,9 +136,9 @@ export default function LoginPage() {
                   >
                     <ShoppingCart className="h-4 w-4 shrink-0" />
                     <div>
-                      <div className=" leading-tight">Área de Vendas (FV)</div>
+                      <div className="leading-tight">Área de Vendas</div>
                       <div className="text-[10px] font-normal opacity-80">
-                        Loja e Lançamento de Pedidos
+                        Loja e Pedidos
                       </div>
                     </div>
                   </button>
@@ -164,9 +154,9 @@ export default function LoginPage() {
                   >
                     <LayoutDashboard className="h-4 w-4 shrink-0" />
                     <div>
-                      <div className="leading-tight">Área Administrativa</div>
+                      <div className="leading-tight">Administração</div>
                       <div className="text-[10px] font-normal opacity-80">
-                        Painel Força de Vendas
+                        Painel de Controle
                       </div>
                     </div>
                   </button>
@@ -176,11 +166,7 @@ export default function LoginPage() {
 
             <CardFooter className="flex flex-col space-y-3">
               <Button type="submit" className="w-full font-bold" disabled={isPending}>
-                {isPending
-                  ? "Autenticando..."
-                  : destination === "fv"
-                  ? "Entrar na Área de Vendas (FV)"
-                  : "Entrar na Área Administrativa do Força de Vendas"}
+                {isPending ? "Entrando..." : "Entrar"}
               </Button>
             </CardFooter>
           </form>
@@ -191,52 +177,42 @@ export default function LoginPage() {
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base">
               <Briefcase className="h-4 w-4 text-primary" />
-              Acessos Homologados (Clique para Preencher)
+              Acessos Rápidos de Demonstração
             </CardTitle>
             <CardDescription className="text-xs">
-              Clique em qualquer perfil abaixo para preencher os dados automaticamente:
+              Clique em qualquer perfil para preencher os dados:
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3 text-xs">
+          <CardContent className="space-y-2.5 text-xs">
             {/* 1. PRO-CONTROL Vendedor Adilson */}
             <div
               onClick={() => fillPreset("pro-control", "adilson", "5122", "fv")}
-              className="cursor-pointer rounded-xl border bg-background p-3 transition hover:border-primary hover:shadow-xs"
+              className="cursor-pointer rounded-xl border bg-background p-2.5 transition hover:border-primary hover:shadow-xs"
             >
               <div className="flex items-center justify-between font-bold text-foreground">
-                <span>1. Vendedor PRO-CONTROL (Adilson)</span>
+                <span>Vendedor PRO-CONTROL</span>
                 <span className="rounded bg-emerald-500/15 px-2 py-0.5 font-mono text-[10px] text-emerald-600">
                   35.951.466/0001-57
                 </span>
               </div>
               <p className="mt-1 font-mono text-[11px] text-muted-foreground">
-                Empresa: <b className="text-foreground">pro-control</b> • Usuário:{" "}
-                <b className="text-foreground">adilson</b> • Senha:{" "}
-                <b className="text-foreground">5122</b>
-              </p>
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                Abre a tela de vendas como vendedor permitindo indicar qual cliente está comprando.
+                <b className="text-foreground">pro-control</b> • <b className="text-foreground">adilson</b> • Senha: <b className="text-foreground">5122</b>
               </p>
             </div>
 
             {/* 2. COMPUTIVA Vendedor / FV */}
             <div
               onClick={() => fillPreset("computiva", "adilson", "5122", "fv")}
-              className="cursor-pointer rounded-xl border bg-background p-3 transition hover:border-primary hover:shadow-xs"
+              className="cursor-pointer rounded-xl border bg-background p-2.5 transition hover:border-primary hover:shadow-xs"
             >
               <div className="flex items-center justify-between font-bold text-foreground">
-                <span>2. Empresa COMPUTIVA (Força de Vendas)</span>
+                <span>Empresa COMPUTIVA</span>
                 <span className="rounded bg-sky-500/15 px-2 py-0.5 font-mono text-[10px] text-sky-600">
                   03.358.951/0001-98
                 </span>
               </div>
               <p className="mt-1 font-mono text-[11px] text-muted-foreground">
-                Empresa: <b className="text-foreground">computiva</b> • Usuário:{" "}
-                <b className="text-foreground">adilson</b> • Senha:{" "}
-                <b className="text-foreground">5122</b>
-              </p>
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                Banco de dados exclusivo da Computiva (`03358951000198_BDpdon`).
+                <b className="text-foreground">computiva</b> • <b className="text-foreground">adilson</b> • Senha: <b className="text-foreground">5122</b>
               </p>
             </div>
 
@@ -245,86 +221,74 @@ export default function LoginPage() {
               onClick={() =>
                 fillPreset("pro-control", "03358951000198", "03358951000198", "fv")
               }
-              className="cursor-pointer rounded-xl border bg-background p-3 transition hover:border-primary hover:shadow-xs"
+              className="cursor-pointer rounded-xl border bg-background p-2.5 transition hover:border-primary hover:shadow-xs"
             >
               <div className="flex items-center justify-between font-bold text-foreground">
-                <span>3. Cliente Direto (Login e Senha = CNPJ)</span>
+                <span>Cliente B2B (Autoatendimento)</span>
                 <span className="rounded bg-amber-500/15 px-2 py-0.5 font-mono text-[10px] text-amber-600">
-                  Cliente B2B -10%
+                  -10% Desconto
                 </span>
               </div>
               <p className="mt-1 font-mono text-[11px] text-muted-foreground">
-                Loja: <b className="text-foreground">pro-control</b> • Login:{" "}
-                <b className="text-foreground">03358951000198</b> • Senha:{" "}
-                <b className="text-foreground">03358951000198</b>
-              </p>
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                O cliente cadastrado acessa direto com seu CNPJ como usuário e senha.
+                <b className="text-foreground">pro-control</b> • <b className="text-foreground">03358951000198</b> • Senha: <b className="text-foreground">03358951000198</b>
               </p>
             </div>
 
             {/* 4. IG Decoração */}
             <div
               onClick={() => fillPreset("ig_fv", "admin", "ig@123", "fv")}
-              className="cursor-pointer rounded-xl border bg-background p-3 transition hover:border-primary hover:shadow-xs"
+              className="cursor-pointer rounded-xl border bg-background p-2.5 transition hover:border-primary hover:shadow-xs"
             >
               <div className="flex items-center justify-between font-bold text-foreground">
-                <span>4. IG Decoração (Referência FV)</span>
+                <span>IG Decoração</span>
                 <span className="rounded bg-purple-500/15 px-2 py-0.5 font-mono text-[10px] text-purple-600">
                   11.222.333/0001-81
                 </span>
               </div>
               <p className="mt-1 font-mono text-[11px] text-muted-foreground">
-                Empresa: <b className="text-foreground">ig_fv</b> • Usuário:{" "}
-                <b className="text-foreground">admin</b> • Senha:{" "}
-                <b className="text-foreground">ig@123</b>
+                <b className="text-foreground">ig_fv</b> • <b className="text-foreground">admin</b> • Senha: <b className="text-foreground">ig@123</b>
               </p>
             </div>
 
             {/* 5. ADMIN MASTER GLOBAL */}
             <div
               onClick={() => fillPreset("master", "master", "master", "admin")}
-              className="cursor-pointer rounded-xl border-2 border-amber-500/40 bg-amber-500/10 p-3 transition hover:border-amber-500 hover:shadow-xs"
+              className="cursor-pointer rounded-xl border-2 border-amber-500/40 bg-amber-500/10 p-2.5 transition hover:border-amber-500 hover:shadow-xs"
             >
               <div className="flex items-center justify-between font-bold text-foreground">
-                <span>5. Admin Master (Acesso a Todas as Empresas)</span>
+                <span>Admin Master (Multi-empresa)</span>
                 <span className="rounded bg-amber-500/20 px-2 py-0.5 font-mono text-[10px] font-bold text-amber-700">
-                  Acesso Global
+                  Painel Geral
                 </span>
               </div>
               <p className="mt-1 font-mono text-[11px] text-muted-foreground">
-                Empresa: <b className="text-foreground">master</b> • Usuário:{" "}
-                <b className="text-foreground">master</b> • Senha:{" "}
-                <b className="text-foreground">master</b>
-              </p>
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                Permite alternar entre todas as empresas no topo e provisionar novos CNPJs.
+                <b className="text-foreground">master</b> • <b className="text-foreground">master</b> • Senha: <b className="text-foreground">master</b>
               </p>
             </div>
 
             {/* Links diretos para a tela de lançamento de vendas de cada CNPJ */}
-            <div className="rounded-xl border bg-muted/40 p-3">
-              <p className="mb-2 font-bold text-foreground">
-                Acesso Direto à Tela de Lançamento de Vendas:
+            <div className="rounded-xl border bg-muted/40 p-2.5">
+              <p className="mb-1.5 font-bold text-foreground">
+                Acesso Direto à Loja / Vitrine:
               </p>
               <div className="flex flex-wrap gap-1.5">
                 <Link
                   href="/loja/35951466000157"
                   className="inline-flex items-center gap-1 rounded-md border bg-background px-2.5 py-1 font-mono text-[11px] font-semibold hover:border-primary hover:text-primary"
                 >
-                  PRO-CONTROL (35951466000157) <ExternalLink className="h-3 w-3" />
+                  PRO-CONTROL <ExternalLink className="h-3 w-3" />
                 </Link>
                 <Link
                   href="/loja/03358951000198"
                   className="inline-flex items-center gap-1 rounded-md border bg-background px-2.5 py-1 font-mono text-[11px] font-semibold hover:border-primary hover:text-primary"
                 >
-                  COMPUTIVA (03358951000198) <ExternalLink className="h-3 w-3" />
+                  COMPUTIVA <ExternalLink className="h-3 w-3" />
                 </Link>
                 <Link
                   href="/loja/11222333000181"
                   className="inline-flex items-center gap-1 rounded-md border bg-background px-2.5 py-1 font-mono text-[11px] font-semibold hover:border-primary hover:text-primary"
                 >
-                  IG (11222333000181) <ExternalLink className="h-3 w-3" />
+                  IG DECORAÇÃO <ExternalLink className="h-3 w-3" />
                 </Link>
               </div>
             </div>

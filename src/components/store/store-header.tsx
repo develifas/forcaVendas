@@ -39,6 +39,7 @@ export function StoreHeader({ cnpj, name, session, q, ordem, vista, erro, entrar
   const base = `/loja/${cnpj}`;
   const loginOpen = Boolean(erro) || Boolean(entrar);
   const db = getTenantDatabase(cnpj);
+  const logoUrl = db?.storeParameters?.logoUrl;
   const activeCustomers = (db?.customers ?? []).filter((c) => c.isActive);
   const isSellerMode = Boolean(session?.sellerId);
 
@@ -104,10 +105,19 @@ export function StoreHeader({ cnpj, name, session, q, ordem, vista, erro, entrar
 
       <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5">
         <Link href={base} className="flex min-w-0 items-center gap-2.5 font-extrabold text-store-text">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-store-accent text-sm text-store-accentfg">
-            {initialOf(name)}
-            {name.split(" ")[1] ? initialOf(name.split(" ")[1]) : ""}
-          </span>
+          {logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={logoUrl}
+              alt={name}
+              className="h-10 w-auto max-w-[130px] rounded-lg object-contain bg-white p-1 border border-store-border shadow-2xs"
+            />
+          ) : (
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-store-accent text-sm text-store-accentfg">
+              {initialOf(name)}
+              {name.split(" ")[1] ? initialOf(name.split(" ")[1]) : ""}
+            </span>
+          )}
           <div className="min-w-0">
             <span className="block truncate text-base leading-tight">{name}</span>
             <span className="block font-mono text-[10px] font-medium text-store-muted">
@@ -221,18 +231,9 @@ export function StoreHeader({ cnpj, name, session, q, ordem, vista, erro, entrar
                   </form>
                 </div>
               ) : (
-                <form action={loginAction.bind(null, cnpj)} className="space-y-3">
+                <form action={loginAction.bind(null, cnpj)} className="space-y-3.5">
                   <input type="hidden" name="next" value={next} />
-                  <div className="rounded-xl bg-store-surface2 p-3 text-xs leading-relaxed text-store-muted">
-                    <p>
-                      <b className="text-store-text">Acesso Cliente:</b> digite seu{" "}
-                      <b className="text-store-text">CNPJ/CPF</b> (a senha padrão do cadastro é o próprio CNPJ).
-                    </p>
-                    <p className="mt-1">
-                      <b className="text-store-text">Acesso Vendedor (FV):</b> digite seu usuário (ex.:{" "}
-                      <code className="text-store-text">adilson</code>) e senha para lançar vendas escolhendo o cliente.
-                    </p>
-                  </div>
+
                   {(erro === "login" || erro === "bloqueado") && (
                     <p
                       role="alert"
@@ -243,39 +244,43 @@ export function StoreHeader({ cnpj, name, session, q, ordem, vista, erro, entrar
                         : "Usuário/CNPJ ou senha inválidos."}
                     </p>
                   )}
+
                   <label className="block text-xs font-semibold text-store-text">
-                    CNPJ/CPF do Cliente ou Usuário Vendedor
+                    CNPJ ou Usuário
                     <input
                       name="login"
                       required
                       autoComplete="username"
-                      placeholder="Ex.: 03358951000198 ou adilson"
+                      placeholder="CNPJ ou usuário"
                       className={input}
                     />
                   </label>
+
                   <label className="block text-xs font-semibold text-store-text">
-                    Senha (normalmente o CNPJ ou senha do vendedor)
+                    Senha
                     <input
                       name="senha"
                       type="password"
                       required
                       autoComplete="current-password"
-                      placeholder="Digite a senha"
+                      placeholder="Sua senha"
                       className={input}
                     />
                   </label>
+
                   <button
                     type="submit"
-                    className="h-11 w-full rounded-xl bg-store-accent text-sm font-bold text-store-accentfg transition hover:opacity-90"
+                    className="h-10 w-full rounded-xl bg-store-accent text-sm font-bold text-store-accentfg transition hover:opacity-90"
                   >
-                    Entrar no Lançamento de Vendas
+                    Entrar
                   </button>
-                  <div className="pt-1 text-center">
+
+                  <div className="pt-0.5 text-center">
                     <Link
                       href="/login"
-                      className="text-[11px] font-semibold text-store-accent hover:underline"
+                      className="text-[11px] font-medium text-store-muted hover:text-store-accent transition hover:underline"
                     >
-                      Acessar Login por Empresa (pro-control / computiva / ig_fv) →
+                      Login com código de empresa →
                     </Link>
                   </div>
                 </form>

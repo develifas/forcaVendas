@@ -96,44 +96,79 @@ async function requireActiveCnpj(): Promise<string> {
 /**
  * Salva imagens enviadas do computador (via DataURL otimizado no cliente ou File bruto)
  * dentro de `public/uploads/<cnpj>/` e retorna as URLs públicas (`/uploads/<cnpj>/...`).
+ * No ambiente serverless com disco somente leitura (Vercel), preserva a Data URL inline com segurança.
  */
 async function saveUploadedImagesFromForm(cnpj: string, formData: FormData): Promise<string[]> {
   const savedUrls: string[] = [];
   const uploadDir = path.join(process.cwd(), "public", "uploads", cnpj);
 
   const ensureDir = () => {
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
+    try {
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+      return true;
+    } catch {
+      return false;
     }
   };
 
-  // 1) Data URLs otimizadas enviadas pelo componente client (ex: data:image/jpeg;base64,...)
-  const dataUrls = formData.getAll("uploadedDataUrls").map((v) => String(v ?? "").trim());
+  // 1) Data URLs otimizadas enviadas pelo componente client (aceita múltiplos nomes de campo)
+  const dataUrls = [
+    ...formData.getAll("uploadedDataUrls"),
+    ...formData.getAll("uploadedImagesData"),
+  ]
+    .map((v) => String(v ?? "").trim())
+    .filter(Boolean);
+
   for (let i = 0; i < dataUrls.length; i++) {
     const d = dataUrls[i];
     const match = /^data:image\/(jpeg|jpg|png|webp|gif);base64,(.+)$/i.exec(d);
-    if (!match) continue;
+    if (!match) {
+      if (d.startsWith("http://") || d.startsWith("https://") || d.startsWith("/uploads/")) {
+        savedUrls.push(d);
+      }
+      continue;
+    }
+
     const ext = match[1].toLowerCase() === "jpeg" ? "jpg" : match[1].toLowerCase();
-    const buf = Buffer.from(match[2], "base64");
-    if (buf.length === 0) continue;
-    ensureDir();
-    const fileName = `prd-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 6)}.${ext}`;
-    fs.writeFileSync(path.join(uploadDir, fileName), buf);
-    savedUrls.push(`/uploads/${cnpj}/${fileName}`);
+    let wroteDisk = false;
+
+    try {
+      if (ensureDir()) {
+        const buf = Buffer.from(match[2], "base64");
+        if (buf.length > 0) {
+          const fileName = `logo-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 6)}.${ext}`;
+          fs.writeFileSync(path.join(uploadDir, fileName), buf);
+          savedUrls.push(`/uploads/${cnpj}/${fileName}`);
+          wroteDisk = true;
+        }
+      }
+    } catch {
+      wroteDisk = false;
+    }
+
+    // Se o disco for read-only (ex: Vercel), mantém a Data URL para não perder o logo/imagem
+    if (!wroteDisk) {
+      savedUrls.push(d);
+    }
   }
 
-  // 2) Fallback: caso o navegador envie <input type="file" name="imageFiles"> diretamente sem JS
-  if (savedUrls.length === 0) {
-    const files = formData.getAll("imageFiles");
-    for (let i = 0; i < files.length; i++) {
-      const f = files[i];
-      if (f instanceof File && f.size > 0 && f.type.startsWith("image/")) {
-        ensureDir();
-        const ext = (f.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
-        const fileName = `prd-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 6)}.${ext}`;
-        const arrayBuffer = await f.arrayBuffer();
-        fs.writeFileSync(path.join(uploadDir, fileName), Buffer.from(arrayBuffer));
-        savedUrls.push(`/uploads/${cnpj}/${fileName}`);
+  // 2) Fallback se houver arquivos brutos via input file
+  const files = formData.getAll("imageFiles");
+  for (let i = 0; i < files.length; i++) {
+    const f = files[i];
+    if (f instanceof File && f.size > 0 && f.type.startsWith("image/")) {
+      try {
+        if (ensureDir()) {
+          const ext = (f.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+          const fileName = `prd-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 6)}.${ext}`;
+          const arrayBuffer = await f.arrayBuffer();
+          fs.writeFileSync(path.join(uploadDir, fileName), Buffer.from(arrayBuffer));
+          savedUrls.push(`/uploads/${cnpj}/${fileName}`);
+        }
+      } catch {
+        // ignora se filesystem for read-only
       }
     }
   }
@@ -617,54 +652,64 @@ export async function saveStoreBannersAction(
   }
 }
 
-export async function saveStoreParametersAction(formData: FormData) {
-  const cnpjFromForm = String(formData.get("cnpj") ?? "").trim();
-  const cnpj = cnpjFromForm || (await requireActiveCnpj());
-  const paramsJson = String(formData.get("parametersJson") ?? "").trim();
-  const routeName = String(formData.get("routeName") ?? "").trim();
-  const primaryColor = String(formData.get("primaryColor") ?? "").trim();
-  const bannerText = String(formData.get("bannerText") ?? "").trim();
+export async function saveStoreParametersAction(formData: FormData): Promise<{ ok: boolean; error?: string; logoUrl?: string }> {
+  try {
+    const cnpjFromForm = String(formData.get("cnpj") ?? "").trim();
+    const cnpj = cnpjFromForm || (await requireActiveCnpj());
+    const paramsJson = String(formData.get("parametersJson") ?? "").trim();
+    const routeName = String(formData.get("routeName") ?? "").trim();
+    const primaryColor = String(formData.get("primaryColor") ?? "").trim();
+    const bannerText = String(formData.get("bannerText") ?? "").trim();
 
-  const uploadedLogos = await saveUploadedImagesFromForm(cnpj, formData);
+    const uploadedLogos = await saveUploadedImagesFromForm(cnpj, formData);
 
-  mutateTenantDatabase(cnpj, (db, route) => {
-    const current = db.storeParameters ?? createDefaultStoreParameters(cnpj);
-    let nextParams: DbStoreParameters = { ...current };
+    let finalLogoUrl = "";
 
-    if (paramsJson) {
-      try {
-        const parsed = JSON.parse(paramsJson) as Partial<DbStoreParameters>;
-        nextParams = { ...nextParams, ...parsed };
-      } catch {
-        // mantém atual se falhar parse
+    mutateTenantDatabase(cnpj, (db, route) => {
+      const current = db.storeParameters ?? createDefaultStoreParameters(cnpj);
+      let nextParams: DbStoreParameters = { ...current };
+
+      if (paramsJson) {
+        try {
+          const parsed = JSON.parse(paramsJson) as Partial<DbStoreParameters>;
+          nextParams = { ...nextParams, ...parsed };
+        } catch {
+          // mantém atual se falhar parse
+        }
       }
-    }
 
-    if (uploadedLogos.length > 0) {
-      nextParams.logoUrl = uploadedLogos[0];
-    }
+      if (uploadedLogos.length > 0) {
+        nextParams.logoUrl = uploadedLogos[0];
+      }
 
-    // Salva imagens em base64 dos banners no disco para manter o JSON leve e performático
-    if (nextParams.banners && Array.isArray(nextParams.banners)) {
-      nextParams.banners = persistBannerImages(cnpj, nextParams.banners);
-    }
+      finalLogoUrl = nextParams.logoUrl || "";
 
-    db.storeParameters = nextParams;
+      // Salva imagens em base64 dos banners no disco para manter o JSON leve e performático
+      if (nextParams.banners && Array.isArray(nextParams.banners)) {
+        nextParams.banners = persistBannerImages(cnpj, nextParams.banners);
+      }
 
-    // Sincroniza também com a rota pública da loja (/loja/[cnpj])
-    if (routeName) route.name = routeName;
-    if (primaryColor) route.primaryColor = primaryColor;
-    if (bannerText) route.bannerText = bannerText;
-    if (nextParams.email) route.contactEmail = nextParams.email;
-    if (nextParams.phone1Number) {
-      route.contactPhone = nextParams.phone1Ddd
-        ? `(${nextParams.phone1Ddd}) ${nextParams.phone1Number}`
-        : nextParams.phone1Number;
-    }
-  });
+      db.storeParameters = nextParams;
 
-  revalidatePath("/", "layout");
-  revalidatePath(`/loja/${cnpj}`);
+      // Sincroniza também com a rota pública da loja (/loja/[cnpj])
+      if (routeName) route.name = routeName;
+      if (primaryColor) route.primaryColor = primaryColor;
+      if (bannerText) route.bannerText = bannerText;
+      if (nextParams.email) route.contactEmail = nextParams.email;
+      if (nextParams.phone1Number) {
+        route.contactPhone = nextParams.phone1Ddd
+          ? `(${nextParams.phone1Ddd}) ${nextParams.phone1Number}`
+          : nextParams.phone1Number;
+      }
+    });
+
+    revalidatePath("/", "layout");
+    revalidatePath(`/loja/${cnpj}`);
+    revalidatePath("/storefront");
+    return { ok: true, logoUrl: finalLogoUrl };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Falha ao gravar parâmetros da loja." };
+  }
 }
 
 export async function updateStorefrontSettingsAction(formData: FormData) {

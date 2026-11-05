@@ -62,6 +62,7 @@ export function StoreParametersManager({
     initialParams.logoUrl || ""
   );
   const [logoFileName, setLogoFileName] = useState<string>("");
+  const [savingGeneral, setSavingGeneral] = useState(false);
 
   // Estado da Aba 4 (Conta de Email)
   const [showEmailForm, setShowEmailForm] = useState(false);
@@ -103,17 +104,46 @@ export function StoreParametersManager({
     setParams((prev) => ({ ...prev, [key]: val }));
   };
 
-  // Lê arquivo de imagem do computador na Aba 2 (Dados Gerais)
+  // Lê arquivo de imagem do computador na Aba 2 (Dados Gerais) e otimiza via Canvas
   const handleLogoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      alert("Por favor, selecione um arquivo de imagem (PNG, JPG, WEBP).");
+      return;
+    }
     setLogoFileName(file.name);
     const reader = new FileReader();
     reader.onload = () => {
-      if (typeof reader.result === "string") {
-        setLogoPreviewDataUrl(reader.result);
-        updateParam("logoUrl", reader.result);
-      }
+      const src = reader.result;
+      if (typeof src !== "string") return;
+      const img = new Image();
+      img.onload = () => {
+        const MAX_WIDTH = 600;
+        const MAX_HEIGHT = 400;
+        let width = img.width;
+        let height = img.height;
+        if (width > MAX_WIDTH || height > MAX_HEIGHT) {
+          const ratio = Math.min(MAX_WIDTH / width, MAX_HEIGHT / height);
+          width = Math.round(width * ratio);
+          height = Math.round(height * ratio);
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const isPng = file.type === "image/png";
+          const optimized = isPng ? canvas.toDataURL("image/png") : canvas.toDataURL("image/jpeg", 0.85);
+          setLogoPreviewDataUrl(optimized);
+          updateParam("logoUrl", optimized);
+        } else {
+          setLogoPreviewDataUrl(src);
+          updateParam("logoUrl", src);
+        }
+      };
+      img.src = src;
     };
     reader.readAsDataURL(file);
   };
@@ -456,10 +486,25 @@ export function StoreParametersManager({
       {/* Formulário Geral dos Parâmetros da Loja */}
       <form
         action={async (fd) => {
-          await saveStoreParametersAction(fd);
-          setSuccessModalMsg(
-            `Os parâmetros da loja ${tenantName} foram salvos com sucesso!`
-          );
+          setSavingGeneral(true);
+          try {
+            const res = await saveStoreParametersAction(fd);
+            if (res.ok) {
+              if (res.logoUrl) {
+                setLogoPreviewDataUrl(res.logoUrl);
+                updateParam("logoUrl", res.logoUrl);
+              }
+              setSuccessModalMsg(
+                `Os parâmetros da loja ${tenantName} foram salvos com sucesso!`
+              );
+            } else {
+              alert(res.error || "Não foi possível salvar os parâmetros.");
+            }
+          } catch {
+            alert("Erro ao salvar parâmetros da loja.");
+          } finally {
+            setSavingGeneral(false);
+          }
         }}
         className="rounded-xl border bg-card p-6 text-card-foreground shadow-sm"
       >
@@ -472,12 +517,19 @@ export function StoreParametersManager({
         <input type="hidden" name="routeName" value={layoutName} />
         <input type="hidden" name="primaryColor" value={layoutColor} />
         <input type="hidden" name="bannerText" value={layoutBannerText} />
-        {logoPreviewDataUrl.startsWith("data:image/") && (
-          <input
-            type="hidden"
-            name="uploadedImagesData"
-            value={logoPreviewDataUrl}
-          />
+        {logoPreviewDataUrl && (
+          <>
+            <input
+              type="hidden"
+              name="uploadedDataUrls"
+              value={logoPreviewDataUrl}
+            />
+            <input
+              type="hidden"
+              name="uploadedImagesData"
+              value={logoPreviewDataUrl}
+            />
+          </>
         )}
 
         {/* Abas Superiores: Parâmetros | Dados Gerais | Botões de Acesso | Conta de Email | Banner's | Layout */}
@@ -732,9 +784,10 @@ export function StoreParametersManager({
               </span>
               <button
                 type="submit"
-                className="inline-flex h-9 items-center justify-center rounded border border-slate-400 bg-slate-100 px-6 text-xs font-semibold text-slate-900 shadow-2xs hover:bg-slate-200"
+                disabled={savingGeneral}
+                className="inline-flex h-9 items-center justify-center rounded border border-slate-400 bg-slate-100 px-6 text-xs font-semibold text-slate-900 shadow-2xs hover:bg-slate-200 disabled:opacity-50"
               >
-                Salvar
+                {savingGeneral ? "Salvando..." : "Salvar"}
               </button>
             </div>
           </div>
@@ -759,7 +812,7 @@ export function StoreParametersManager({
                         type="text"
                         value={params.site}
                         onChange={(e) => updateParam("site", e.target.value)}
-                        placeholder="pro-controll.com.br"
+                        placeholder="seusite.com.br"
                         className="h-9 w-full max-w-sm rounded border border-slate-300 bg-background px-3 text-sm"
                       />
                     </div>
@@ -770,7 +823,7 @@ export function StoreParametersManager({
                         type="email"
                         value={params.email}
                         onChange={(e) => updateParam("email", e.target.value)}
-                        placeholder="igdecoracoes@hotmail.com"
+                        placeholder="contato@empresa.com.br"
                         className="h-9 w-full max-w-sm rounded border border-slate-300 bg-background px-3 text-sm"
                       />
                     </div>
@@ -785,7 +838,7 @@ export function StoreParametersManager({
                           onChange={(e) =>
                             updateParam("phone1Ddd", e.target.value)
                           }
-                          placeholder="27"
+                          placeholder="DDD"
                           className="h-9 w-16 rounded border border-slate-300 bg-background px-2.5 text-center text-sm"
                         />
                         <input
@@ -794,7 +847,7 @@ export function StoreParametersManager({
                           onChange={(e) =>
                             updateParam("phone1Number", e.target.value)
                           }
-                          placeholder="998103723"
+                          placeholder="Número"
                           className="h-9 flex-1 rounded border border-slate-300 bg-background px-3 text-sm"
                         />
                       </div>
@@ -810,7 +863,7 @@ export function StoreParametersManager({
                           onChange={(e) =>
                             updateParam("phone2Ddd", e.target.value)
                           }
-                          placeholder="27"
+                          placeholder="DDD"
                           className="h-9 w-16 rounded border border-slate-300 bg-background px-2.5 text-center text-sm"
                         />
                         <input
@@ -819,7 +872,7 @@ export function StoreParametersManager({
                           onChange={(e) =>
                             updateParam("phone2Number", e.target.value)
                           }
-                          placeholder="998103723"
+                          placeholder="Número"
                           className="h-9 flex-1 rounded border border-slate-300 bg-background px-3 text-sm"
                         />
                       </div>
@@ -945,9 +998,10 @@ export function StoreParametersManager({
               </span>
               <button
                 type="submit"
-                className="inline-flex h-9 items-center justify-center rounded border border-slate-400 bg-slate-100 px-6 text-xs font-semibold text-slate-900 shadow-2xs hover:bg-slate-200"
+                disabled={savingGeneral}
+                className="inline-flex h-9 items-center justify-center rounded border border-slate-400 bg-slate-100 px-6 text-xs font-semibold text-slate-900 shadow-2xs hover:bg-slate-200 disabled:opacity-50"
               >
-                Salvar
+                {savingGeneral ? "Salvando..." : "Salvar"}
               </button>
             </div>
           </div>
@@ -1693,9 +1747,10 @@ export function StoreParametersManager({
             <div className="mt-6 flex justify-end">
               <button
                 type="submit"
-                className="inline-flex h-9 items-center justify-center rounded border border-slate-400 bg-slate-100 px-6 text-xs font-semibold text-slate-900 shadow-2xs hover:bg-slate-200"
+                disabled={savingGeneral}
+                className="inline-flex h-9 items-center justify-center rounded border border-slate-400 bg-slate-100 px-6 text-xs font-semibold text-slate-900 shadow-2xs hover:bg-slate-200 disabled:opacity-50"
               >
-                Salvar
+                {savingGeneral ? "Salvando..." : "Salvar"}
               </button>
             </div>
           </div>
